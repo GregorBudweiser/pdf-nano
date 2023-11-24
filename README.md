@@ -21,4 +21,4 @@ Not on the todo list (due to code size):
 
 ### How to build
 PDF-Nano is written in Zig, so you will need the Zig compiler. Then simply compile for your target platform (e.g. wasm):
-'''zig build -Doptimize=ReleaseSmall -Dtarget=wasm32-freestanding'''
+    zig build -Doptimize=ReleaseSmall -Dtarget=wasm32-freestanding
