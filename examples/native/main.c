@@ -1,9 +1,10 @@
-#include "../include/pdf-nano.h"
+#include <pdf-nano.h>
 #include <stdio.h>
 
 int main(int argc, char** argv) {
     if (argc <= 1) {
         printf("usage: main.exe <out_filename>\n");
+        return 0;
     }
 
     encoder_handle handle = createEncoder(A4, PORTRAIT);
@@ -50,9 +51,7 @@ int main(int argc, char** argv) {
     writeRow(handle, texts, 3);
     finishTable(handle);
 
-    FILE * f = fopen(argv[1], "wb");
-    fprintf(f, "%s", render(handle));
-    fclose(f);
+    saveAs(handle, argv[1]);
 
     freeEncoder(handle);
     return 0;

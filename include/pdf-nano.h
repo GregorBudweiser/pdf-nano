@@ -35,3 +35,5 @@ int32_t addHorizontalLine(encoder_handle handle, float thickness);
 void startTable(encoder_handle handle, int16_t* columnWidths, uint8_t numColumns);
 int32_t writeRow(encoder_handle handle, const char** texts, uint8_t numColumns);
 int32_t finishTable(encoder_handle handle);
+
+int32_t saveAs(encoder_handle handle, const char* filename);

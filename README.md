@@ -23,3 +23,21 @@ Not on the todo list (due to code size):
 PDF-Nano is written in Zig, so you will need the Zig compiler. Then simply compile for your target platform (e.g. wasm):
 
     zig build -Doptimize=ReleaseSmall -Dtarget=wasm32-freestanding
+
+### Usage
+PDF-Nano provides a text-editor like interface, meaning it handles layouting/positioning for you.
+See an [example here](examples/native/main.c).
+
+```c
+#include <pdf-nano.h>
+
+int main(int argc, char** argv) {
+    encoder_handle handle = createEncoder(A4, PORTRAIT);
+    addText(handle, "Hello world!");
+    saveAs(handle, "hello.pdf");
+    freeEncoder(handle);
+    return 0;
+}
+```
+
+There is also a [typescript wrapper](examples/web/pdf-nano.ts).

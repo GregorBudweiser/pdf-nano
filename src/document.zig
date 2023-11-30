@@ -164,6 +164,14 @@ pub const PDFDocument = struct {
         try self.table.finishTable(&self.writer);
     }
 
+    pub fn save(doc: *PDFDocument, filename: []const u8) !void {
+        const out_file = try std.fs.cwd().createFile(filename, .{});
+        defer out_file.close();
+        var buf_writer = std.io.bufferedWriter(out_file.writer());
+        _ = try buf_writer.write(try doc.render());
+        _ = try buf_writer.flush();
+    }
+
     fn writeCells(self: *PDFDocument, table: *Table) !void {
         for (table.getCells()) |cell| {
             _ = cell;

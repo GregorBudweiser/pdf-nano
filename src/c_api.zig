@@ -1,10 +1,11 @@
 const std = @import("std");
 const PDFDocument = @import("./document.zig").PDFDocument;
 const PDFNano = @import("./document.zig");
+const arch = @import("builtin").target.cpu.arch;
 
 export fn createEncoder(format: u32, orientation: u32) usize {
-    if (createAndInit(format, orientation)) |writer| {
-        return @intFromPtr(writer);
+    if (createAndInit(format, orientation)) |doc| {
+        return @intFromPtr(doc);
     } else |_| {
         return 0;
     }
@@ -18,81 +19,68 @@ fn createAndInit(format: u32, orientation: u32) !*PDFDocument {
     return writer;
 }
 
-export fn freeEncoder(handle: usize) void {
-    var writer: *PDFDocument = @ptrFromInt(handle);
-    writer.deinit();
-    std.heap.page_allocator.destroy(writer);
+export fn freeEncoder(doc: *PDFDocument) void {
+    doc.deinit();
+    std.heap.page_allocator.destroy(doc);
 }
 
-export fn setFontSize(handle: usize, size: u8) void {
-    var writer: *PDFDocument = @ptrFromInt(handle);
-    writer.setFontSize(size);
+export fn setFontSize(doc: *PDFDocument, size: u8) void {
+    doc.setFontSize(size);
 }
 
-export fn setFont(handle: usize, fontId: u8) void {
-    var writer: *PDFDocument = @ptrFromInt(handle);
-    writer.setFontById(fontId);
+export fn setFont(doc: *PDFDocument, fontId: u8) void {
+    doc.setFontById(fontId);
 }
 
-export fn advanceCursor(handle: usize, y: u16) void {
-    var writer: *PDFDocument = @ptrFromInt(handle);
-    writer.advanceCursor(y);
+export fn advanceCursor(doc: *PDFDocument, y: u16) void {
+    doc.advanceCursor(y);
 }
 
-export fn addHorizontalLine(handle: usize, thickness: f32) i32 {
-    var writer: *PDFDocument = @ptrFromInt(handle);
-    if (writer.hr(thickness)) {
+export fn addHorizontalLine(doc: *PDFDocument, thickness: f32) i32 {
+    if (doc.hr(thickness)) {
         return 0;
     } else |_| {
         return -1;
     }
 }
 
-export fn addText(handle: usize, text: usize) i32 {
-    var writer: *PDFDocument = @ptrFromInt(handle);
-    const span = std.mem.span(@as([*c]const u8, @ptrFromInt(text)));
-    if (writer.addText(span)) {
+export fn addText(doc: *PDFDocument, text: [*c]const u8) i32 {
+    if (doc.addText(std.mem.span(text))) {
         return 0;
     } else |_| {
         return -1;
     }
 }
 
-export fn render(handle: usize) usize {
-    var writer: *PDFDocument = @ptrFromInt(handle);
-    if (writer.render()) |slice| {
+export fn render(doc: *PDFDocument) usize {
+    if (doc.render()) |slice| {
         return @intCast(@intFromPtr(slice.ptr));
     } else |_| {
         return 0;
     }
 }
 
-export fn startTable(handle: usize, columns: usize, numColumns: u8) void {
-    var writer: *PDFDocument = @ptrFromInt(handle);
+export fn startTable(doc: *PDFDocument, columns: usize, numColumns: u8) void {
     var cols = @as(*[16]u16, @ptrFromInt(columns));
-    writer.startTable(cols[0..numColumns]);
+    doc.startTable(cols[0..numColumns]);
 }
 
-export fn writeRow(handle: usize, texts: usize, numColumns: u8) i32 {
-    var writer: *PDFDocument = @ptrFromInt(handle);
+export fn writeRow(doc: *PDFDocument, texts: *[16]usize, numColumns: u8) i32 {
     var cols: [16][]u8 = [1][]u8{""} ** 16;
-    const arrayOfPtr = @as(*[16]usize, @ptrFromInt(texts));
-
     var i: u8 = 0;
     while (i < numColumns) : (i += 1) {
-        cols[i] = std.mem.span(@as([*c]u8, @ptrFromInt(arrayOfPtr[i])));
+        cols[i] = std.mem.span(@as([*c]u8, @ptrFromInt(texts[i])));
     }
 
-    if (writer.writeRow(cols[0..numColumns])) {
+    if (doc.writeRow(cols[0..numColumns])) {
         return 0;
     } else |_| {
         return -1;
     }
 }
 
-export fn finishTable(handle: usize) i32 {
-    var writer: *PDFDocument = @ptrFromInt(handle);
-    if (writer.finishTable()) {
+export fn finishTable(doc: *PDFDocument) i32 {
+    if (doc.finishTable()) {
         return 0;
     } else |_| {
         return -1;
@@ -103,9 +91,7 @@ export fn getVersion() usize {
     return @intFromPtr(PDFNano.PDF_NANO_VERSION);
 }
 
-// TODO: Export wasm-only stuff only if target is wasm..
-
-/// allocate memory with alignment of uint64_t
+// allocator needed for wasm
 export fn alloc(len: usize) usize {
     if (std.heap.page_allocator.alloc(u64, len + 7 / 8)) |data| {
         return @intFromPtr(data.ptr);
@@ -117,4 +103,16 @@ export fn alloc(len: usize) usize {
 /// free memory allocated by alloc
 export fn free(ptr: usize) void {
     std.heap.page_allocator.free(std.mem.span(@as([*:0]u64, @ptrFromInt(ptr))));
+}
+
+export fn saveAs(doc: *PDFDocument, filename: [*:0]const u8) i32 {
+    if (comptime arch.isWasm()) {
+        return 0;
+    }
+
+    if (doc.save(std.mem.span(filename))) {
+        return 0;
+    } else |_| {
+        return -1;
+    }
 }
