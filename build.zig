@@ -13,6 +13,18 @@ pub fn build(b: *std.Build) void {
     lib.rdynamic = true;
     b.installArtifact(lib);
 
+    if (target.cpu_arch) |arch| {
+        if (!arch.isWasm()) {
+            const exe = b.addExecutable(.{
+                .name = "pdf-nano",
+                .root_source_file = .{ .path = "src/main.zig" },
+                .target = target,
+                .optimize = optimize,
+            });
+            b.installArtifact(exe);
+        }
+    }
+
     const main_tests = b.addTest(.{
         .root_source_file = .{ .path = "src/c_api.zig" },
         .target = target,

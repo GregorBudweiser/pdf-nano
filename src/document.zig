@@ -7,8 +7,8 @@ const Table = @import("table.zig").Table;
 
 pub const PDF_NANO_VERSION: [*:0]const u8 = "0.1.0";
 
-const PageOrientation = enum(c_uint) { PORTRAIT, LANDSCAPE };
-const PageFormat = enum(c_uint) { LETTER, A4 };
+pub const PageOrientation = enum(c_uint) { PORTRAIT, LANDSCAPE };
+pub const PageFormat = enum(c_uint) { LETTER, A4 };
 
 /// Common page formats
 const formats = [_][2]u16{
