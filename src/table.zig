@@ -67,7 +67,8 @@ pub const Table = struct {
     }
 
     /// assumes finishRow() was called before
-    pub fn finishTable(self: *Table, writer: *PDFWriter) !void {
+    /// @returns y end-coordinate of table bounds
+    pub fn finishTable(self: *Table, writer: *PDFWriter) !u16 {
         // top
         try writer.putLine(self.lineWidth, self.x, self.y, self.x + self.width, self.y);
 
@@ -76,5 +77,7 @@ pub const Table = struct {
             try writer.putLine(self.lineWidth, cell.x, self.y, cell.x, self.currentRowY);
         }
         try writer.putLine(self.lineWidth, self.x + self.width, self.y, self.x + self.width, self.currentRowY);
+
+        return self.currentRowY;
     }
 };

@@ -146,7 +146,7 @@ pub const PDFDocument = struct {
 
         // handle page breaks if necessary
         while (!self.table.isRowDone()) {
-            try self.table.finishTable(&self.writer);
+            _ = try self.table.finishTable(&self.writer);
             try self.writer.newPage(self.pageProperties.width, self.pageProperties.height);
             self.table.y = self.pageProperties.getContentTop();
             self.table.currentRowY = self.table.y;
@@ -161,7 +161,7 @@ pub const PDFDocument = struct {
     }
 
     pub inline fn finishTable(self: *PDFDocument) !void {
-        try self.table.finishTable(&self.writer);
+        self.cursor.y = try self.table.finishTable(&self.writer);
     }
 
     pub fn save(doc: *PDFDocument, filename: []const u8) !void {

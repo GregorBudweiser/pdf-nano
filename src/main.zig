@@ -43,14 +43,16 @@ pub fn main() !void {
     try document.addText("· Colors/Background Fill");
     try document.addText("· Right Align/Justify Text");
 
-    document.advanceCursor(15);
+    document.advanceCursor(5);
     const cols = [_]u16{ 100, 100, 100 };
     document.startTable(&cols);
 
-    document.setFontById(PredefinedFonts.helveticaBold);
     const strings = [_][]const u8{ "one", "two", "three" };
     try document.writeRow(&strings);
     try document.finishTable();
+
+    document.advanceCursor(5);
+    try document.addText("Test test");
 
     try document.save("hello.pdf");
 }
