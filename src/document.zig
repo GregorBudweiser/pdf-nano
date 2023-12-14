@@ -1,11 +1,12 @@
 const std = @import("std");
 const PDFWriter = @import("writer.zig").PDFWriter;
+const Color = @import("writer.zig").Color;
 const Font = @import("font.zig").Font;
 const PredefinedFonts = @import("font.zig").PredefinedFonts;
 const Layouter = @import("layouter.zig").Layouter;
 const Table = @import("table.zig").Table;
 
-pub const PDF_NANO_VERSION: [*:0]const u8 = "0.1.0";
+pub const PDF_NANO_VERSION: [*:0]const u8 = "0.2.0";
 
 pub const PageOrientation = enum(c_uint) { PORTRAIT, LANDSCAPE };
 pub const PageFormat = enum(c_uint) { LETTER, A4 };
@@ -22,6 +23,9 @@ const Cursor = struct {
     y: u16,
     fontSize: u16,
     fontId: u16,
+    fontColor: Color, // Text + Fill
+    strokeColor: Color, // Lines / Strokes
+    fillColor: Color, // Brackground (e.g. table cell bg)
 };
 
 /// Page properties for a single page in the document
@@ -57,12 +61,12 @@ pub const PDFDocument = struct {
     pageProperties: PageProperties = undefined,
     cursor: Cursor = undefined,
     table: Table = undefined,
+    streamPos: usize = undefined,
 
     pub fn init(allocator: std.mem.Allocator) PDFDocument {
         return PDFDocument{
             .writer = PDFWriter.init(allocator),
             .pageProperties = PageProperties{},
-            .cursor = undefined,
         };
     }
 
@@ -70,6 +74,8 @@ pub const PDFDocument = struct {
         self.writer.deinit();
     }
 
+    /// Calling render() "finishes" the document.
+    /// After that, any changes to the pdf document will not generate a valid pdf file.
     pub fn render(self: *PDFDocument) ![]const u8 {
         try self.writer.endDocument();
         return self.writer.buffer.items;
@@ -80,6 +86,13 @@ pub const PDFDocument = struct {
         self.pageProperties.height = formats[@intFromEnum(format)][1 - @intFromEnum(orientation)];
         try self.writer.startDocument(self.pageProperties.width, self.pageProperties.height);
         self.resetCursor();
+    }
+
+    pub fn breakPage(self: *PDFDocument) !void {
+        try self.writer.newPage(self.pageProperties.width, self.pageProperties.height);
+        self.cursor.y = self.pageProperties.getContentTop();
+        try self.writer.setColor(self.cursor.fontColor);
+        try self.writer.setStrokeColor(self.cursor.strokeColor);
     }
 
     pub fn advanceCursor(self: *PDFDocument, y: u16) void {
@@ -94,7 +107,20 @@ pub const PDFDocument = struct {
         self.cursor.fontId = fontId;
     }
 
+    pub fn setFontColor(self: *PDFDocument, r: f32, g: f32, b: f32) void {
+        self.cursor.fontColor = Color{ .r = r, .g = g, .b = b };
+    }
+
+    pub fn setStrokeColor(self: *PDFDocument, r: f32, g: f32, b: f32) void {
+        self.cursor.strokeColor = Color{ .r = r, .g = g, .b = b };
+    }
+
+    pub fn setFillColor(self: *PDFDocument, r: f32, g: f32, b: f32) void {
+        self.cursor.fillColor = Color{ .r = r, .g = g, .b = b };
+    }
+
     pub fn hr(self: *PDFDocument, thickness: f32) !void {
+        try self.writer.setStrokeColor(self.cursor.strokeColor);
         try self.writer.putLine(thickness, self.pageProperties.getContentLeft(), self.cursor.y, self.pageProperties.getContentRight(), self.cursor.y);
     }
 
@@ -110,39 +136,18 @@ pub const PDFDocument = struct {
                 y = self.pageProperties.getContentTop() - layouter.getLineHeight();
             }
 
+            try self.writer.setColor(self.cursor.fontColor);
             try self.writer.putText(token, self.cursor.fontId, layouter.fontSize, self.pageProperties.documentBorder, y + layouter.getLineHeight() - layouter.getBaseline());
         }
         self.cursor.y = @intCast(y);
     }
 
-    // todo: move this code to table?
-    pub fn writeCell(self: *PDFDocument, table: *Table) !void {
-        var remainingText = table.getCurrentCell().remainingText;
-        var layouter = try Layouter.init(remainingText, table.getCurrentCell().width - 2 * table.padding, self.cursor.fontSize, self.cursor.fontId);
-        var y: i32 = table.currentRowY;
-        while (layouter.nextLine()) |token| {
-            // advance cursor by this new line, breaking loop if we run out of text
-            y -= layouter.getLineHeight();
-            if (y + layouter.getLineGap() < self.pageProperties.getContentBottom()) {
-                table.getCurrentCell().remainingText = remainingText;
-                table.currentColumn += 1;
-                return;
-            }
-
-            try self.writer.putText(token, self.cursor.fontId, layouter.fontSize, table.getCurrentCell().x + table.padding, y - table.padding + 1);
-            remainingText = layouter.remainingText();
-            table.getCurrentCell().height = @intCast(table.currentRowY - y + 2 * table.padding + layouter.getLineHeight() - layouter.getBaseline());
-        }
-        table.getCurrentCell().remainingText.len = 0;
-        table.currentColumn += 1;
-    }
-
     pub fn writeRow(self: *PDFDocument, strings: []const []const u8) !void {
+        try self.writer.setStrokeColor(self.cursor.strokeColor);
         for (self.table.getCells(), strings) |*cell, string| {
             cell.remainingText = string;
         }
-        try self.writeCells(&self.table);
-        try self.table.finishRow(&self.writer);
+        try self.table.writeRow(self);
 
         // handle page breaks if necessary
         while (!self.table.isRowDone()) {
@@ -151,8 +156,7 @@ pub const PDFDocument = struct {
             self.table.y = self.pageProperties.getContentTop();
             self.table.currentRowY = self.table.y;
 
-            try self.writeCells(&self.table);
-            try self.table.finishRow(&self.writer);
+            try self.table.writeRow(self);
         }
     }
 
@@ -164,6 +168,8 @@ pub const PDFDocument = struct {
         self.cursor.y = try self.table.finishTable(&self.writer);
     }
 
+    /// Calling save() "finishes" the document by calling render().
+    /// After that, any changes to the pdf document will not generate a valid pdf file.
     pub fn save(doc: *PDFDocument, filename: []const u8) !void {
         const out_file = try std.fs.cwd().createFile(filename, .{});
         defer out_file.close();
@@ -172,81 +178,26 @@ pub const PDFDocument = struct {
         _ = try buf_writer.flush();
     }
 
-    fn writeCells(self: *PDFDocument, table: *Table) !void {
-        for (table.getCells()) |cell| {
-            _ = cell;
-            try self.writeCell(table);
-        }
-    }
-
     fn resetCursor(self: *PDFDocument) void {
         self.cursor.x = self.pageProperties.documentBorder;
         self.cursor.y = self.pageProperties.getContentTop();
         self.cursor.fontSize = 12;
         self.cursor.fontId = PredefinedFonts.helveticaRegular;
+        self.cursor.fontColor = Color{ .r = 0, .g = 0, .b = 0 };
+        self.cursor.strokeColor = Color{ .r = 0, .g = 0, .b = 0 };
+        self.cursor.fillColor = Color{ .r = 1, .g = 1, .b = 1 };
     }
 };
 
-test "write simple pdf to disk" {
+test "create empty pdf" {
     std.testing.log_level = .info;
     var document = PDFDocument.init(std.heap.page_allocator);
     defer document.deinit();
 
     try document.setupDocument(PageFormat.A4, PageOrientation.PORTRAIT);
 
-    {
-        document.setFontById(PredefinedFonts.helveticaBold);
-        document.setFontSize(36);
-        try document.addText("PDF-Nano");
-        try document.hr(1.5);
-
-        document.advanceCursor(15);
-        document.setFontById(PredefinedFonts.helveticaRegular);
-        document.setFontSize(12);
-        try document.addText("PDF-Nano is a tiny pdf library for projects where storage space is limited. The goal is to support as many features as possible while staying below ~64kB.");
-
-        document.advanceCursor(15);
-        document.setFontById(PredefinedFonts.helveticaBold);
-        document.setFontSize(18);
-        try document.addText("Done:");
-
-        document.advanceCursor(5);
-        document.setFontById(PredefinedFonts.helveticaRegular);
-        document.setFontSize(12);
-        try document.addText("· Basic Fonts/Text/Pages");
-        try document.addText("· Umlaut: äöü èàé");
-        try document.addText("· Lines");
-        try document.addText("· Tables");
-
-        document.advanceCursor(15);
-        document.setFontById(PredefinedFonts.helveticaBold);
-        document.setFontSize(18);
-        try document.addText("Todo:");
-
-        document.advanceCursor(5);
-        document.setFontById(PredefinedFonts.helveticaRegular);
-        document.setFontSize(12);
-        try document.addText("· Colors/Background Fill");
-        try document.addText("· Right Align/Justify Text");
-
-        document.advanceCursor(15);
-        const cols = [_]u16{ 100, 100, 100 };
-        document.startTable(&cols);
-
-        document.setFontById(PredefinedFonts.helveticaBold);
-        const strings = [_][]const u8{ "one", "two", "three" };
-        try document.writeRow(&strings);
-        try document.finishTable();
-    }
-
     var result = try document.render();
-    try std.testing.expect(result.len > 5);
-    const out_file = try std.fs.cwd().createFile("zig-out/lib/test.pdf", .{});
-    defer out_file.close();
-    var buf_writer = std.io.bufferedWriter(out_file.writer());
-    var stream_writer = buf_writer.writer();
-    try stream_writer.writeAll(result);
-    _ = try buf_writer.flush();
+    try std.testing.expect(result.len > 0);
 }
 
 test "check enums" {

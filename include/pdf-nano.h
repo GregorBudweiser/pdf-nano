@@ -36,4 +36,10 @@ void startTable(encoder_handle handle, int16_t* columnWidths, uint8_t numColumns
 int32_t writeRow(encoder_handle handle, const char** texts, uint8_t numColumns);
 int32_t finishTable(encoder_handle handle);
 
+int32_t breakPage(encoder_handle handle);
+
+int32_t setFontColor(encoder_handle handle, float r, float g, float b);
+int32_t setFillColor(encoder_handle handle, float r, float g, float b);
+int32_t setStrokeColor(encoder_handle handle, float r, float g, float b);
+
 int32_t saveAs(encoder_handle handle, const char* filename);

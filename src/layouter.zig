@@ -138,12 +138,12 @@ pub const Layouter = struct {
 
 test "chop overflowing word at natrual breaks" {
     var parser = try Layouter.init("my_extremely_long_file_name.zip", 72, 12, font.PredefinedFonts.helveticaRegular);
-    try std.testing.expectEqualSlices(u8, "my_", parser.nextLine() orelse ""); // Todo: use .? but this crashes zig 0.11.0
+    try std.testing.expectEqualSlices(u8, "my_", parser.nextLine() orelse ""); // TODO: use .? but this crashes zig 0.11.0
 }
 
 test "chop overflowing word" {
     var parser = try Layouter.init("abcdefghijklmnopqrstuvwxyz", 72, 12, font.PredefinedFonts.helveticaRegular);
-    try std.testing.expectEqualSlices(u8, "abcdefghijkl", parser.nextLine() orelse ""); // Todo: use .? but this crashes zig 0.11.0
+    try std.testing.expectEqualSlices(u8, "abcdefghijkl", parser.nextLine() orelse ""); // TODO: use .? but this crashes zig 0.11.0
 }
 
 test "split text into rows" {

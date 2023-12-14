@@ -5,54 +5,62 @@ const PageOrientation = @import("./document.zig").PageOrientation;
 const PredefinedFonts = @import("./font.zig").PredefinedFonts;
 
 pub fn main() !void {
-    var document = PDFDocument.init(std.heap.page_allocator);
-    defer document.deinit();
+    var doc = PDFDocument.init(std.heap.page_allocator);
+    defer doc.deinit();
 
-    try document.setupDocument(PageFormat.A4, PageOrientation.PORTRAIT);
-    document.setFontById(PredefinedFonts.helveticaBold);
-    document.setFontSize(36);
-    try document.addText("PDF-Nano");
-    try document.hr(1.5);
+    try doc.setupDocument(PageFormat.A4, PageOrientation.PORTRAIT);
+    doc.setFontById(PredefinedFonts.helveticaBold);
+    doc.setFontSize(36);
+    try doc.addText("PDF-Nano");
+    try doc.hr(1.5);
 
-    document.advanceCursor(15);
-    document.setFontById(PredefinedFonts.helveticaRegular);
-    document.setFontSize(12);
-    try document.addText("PDF-Nano is a tiny pdf library for projects where storage space is limited. The goal is to support as many features as possible while staying below ~64kB.");
+    doc.advanceCursor(15);
+    doc.setFontById(PredefinedFonts.helveticaRegular);
+    doc.setFontSize(12);
+    try doc.addText("PDF-Nano is a tiny pdf library for projects where storage space is limited. The goal is to support as many features as possible while staying below ~64kB.");
 
-    document.advanceCursor(15);
-    document.setFontById(PredefinedFonts.helveticaBold);
-    document.setFontSize(18);
-    try document.addText("Done:");
+    doc.advanceCursor(15);
+    doc.setFontById(PredefinedFonts.helveticaBold);
+    doc.setFontSize(18);
+    try doc.addText("Done:");
 
-    document.advanceCursor(5);
-    document.setFontById(PredefinedFonts.helveticaRegular);
-    document.setFontSize(12);
-    try document.addText("· Basic Fonts/Text/Pages");
-    try document.addText("· Umlaut: äöü èàé");
-    try document.addText("· Lines");
-    try document.addText("· Tables");
+    doc.advanceCursor(5);
+    doc.setFontById(PredefinedFonts.helveticaRegular);
+    doc.setFontSize(12);
+    try doc.addText("· Basic Fonts/Text/Pages");
+    try doc.addText("· Umlaut: äöü èàé");
+    try doc.addText("· Lines/Tables");
+    doc.setFontColor(0.8, 0.2, 0.1);
+    try doc.addText("· Colors");
+    doc.setFontColor(0, 0, 0);
 
-    document.advanceCursor(15);
-    document.setFontById(PredefinedFonts.helveticaBold);
-    document.setFontSize(18);
-    try document.addText("Todo:");
+    doc.advanceCursor(15);
+    doc.setFontById(PredefinedFonts.helveticaBold);
+    doc.setFontSize(18);
+    try doc.addText("Todo:");
 
-    document.advanceCursor(5);
-    document.setFontById(PredefinedFonts.helveticaRegular);
-    document.setFontSize(12);
-    try document.addText("· Colors/Background Fill");
-    try document.addText("· Right Align/Justify Text");
+    doc.advanceCursor(5);
+    doc.setFontById(PredefinedFonts.helveticaRegular);
+    doc.setFontSize(12);
+    try doc.addText("· Right Align/Justify Text");
 
-    document.advanceCursor(5);
-    const cols = [_]u16{ 100, 100, 100 };
-    document.startTable(&cols);
+    doc.advanceCursor(15);
+    const cols = [_]u16{ 100, 100, 280 };
+    doc.startTable(&cols);
 
-    const strings = [_][]const u8{ "one", "two", "three" };
-    try document.writeRow(&strings);
-    try document.finishTable();
+    const headers = [_][]const u8{ "Table..", "..header..", "..with backgound color.." };
+    doc.setFontById(PredefinedFonts.helveticaBold);
+    doc.setFillColor(0.9, 0.9, 0.9);
+    try doc.writeRow(&headers);
 
-    document.advanceCursor(5);
-    try document.addText("Test test");
+    const texts = [_][]const u8{ "One..", "Two..", "Three!" };
+    doc.setFontById(PredefinedFonts.helveticaRegular);
+    doc.setFillColor(1, 1, 1);
+    try doc.writeRow(&texts);
+    try doc.finishTable();
 
-    try document.save("hello.pdf");
+    try doc.breakPage();
+    try doc.addText("Second page!");
+
+    try doc.save("hello.pdf");
 }

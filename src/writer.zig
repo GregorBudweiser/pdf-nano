@@ -3,6 +3,9 @@ const layout = @import("layouter.zig");
 const font = @import("font.zig");
 const testing = std.testing;
 
+/// PDF float rgb values
+pub const Color = struct { r: f32, g: f32, b: f32 };
+
 /// Low level pdf writer handling the pdf format specific stuff
 pub const PDFWriter = struct {
     /// pdf output buffer
@@ -75,6 +78,8 @@ pub const PDFWriter = struct {
         self.currentPage = try self.startPage(pageWidth, pageHeight);
     }
 
+    /// Calling endDocument() "finishes" the document.
+    /// After that, any changes to the pdf document will not generate a valid pdf file.
     pub fn endDocument(self: *PDFWriter) !void {
         try self.endPage(self.currentPage, self.pageTreeId);
         try self.writePageTree(self.pageIds.items, self.pageTreeId);
@@ -109,6 +114,30 @@ pub const PDFWriter = struct {
 
     pub fn putLine(self: *PDFWriter, w: f32, x0: i32, y0: i32, x1: i32, y1: i32) !void {
         try self.appendFormatted("{d:.3} w\n{d} {d} m\n{d} {d} l\nS\n", .{ w, x0, y0, x1, y1 });
+    }
+
+    pub fn putRect(self: *PDFWriter, x: i32, y: i32, w: i32, h: i32) !void {
+        try self.appendFormatted("{d} {d} {d} {d} re\nf\n", .{ x, y, w, h });
+    }
+
+    pub fn setColor(self: *PDFWriter, color: Color) !void {
+        try self.appendFormatted("{d:.3} {d:.3} {d:.3} rg\n", .{ color.r, color.g, color.b });
+    }
+
+    pub fn setStrokeColor(self: *PDFWriter, color: Color) !void {
+        try self.appendFormatted("{d:.3} {d:.3} {d:.3} RG\n", .{ color.r, color.g, color.b });
+    }
+
+    /// Get a marker/pointer to the current output to later insert stuff here
+    /// This helps build stuff that depends on the rendering order without
+    /// a dynamic intermediate representation of the pdf file.
+    pub fn createMarker(self: *const PDFWriter) usize {
+        // TODO: track and handle iRefIds once necessary
+        return getEncodedBytes(self);
+    }
+
+    pub fn insertAtMarker(self: *PDFWriter, marker: usize, data: []const u8) !void {
+        try self.buffer.insertSlice(marker, data);
     }
 
     fn writeCatalog(self: *PDFWriter, pageTreeId: usize) !usize {
@@ -222,7 +251,7 @@ pub const PDFWriter = struct {
         try self.append("endobj\n");
     }
 
-    fn getEncodedBytes(self: *PDFWriter) usize {
+    fn getEncodedBytes(self: *const PDFWriter) usize {
         return self.buffer.items.len;
     }
 

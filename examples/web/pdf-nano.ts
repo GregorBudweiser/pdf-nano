@@ -93,6 +93,22 @@ export class PDFDocument {
         this.callH('finishTable');
     }
 
+    breakPage() {
+        this.callH('breakPage');
+    }
+
+    setFontColor(r: number, g: number, b: number) {
+        this.callH('setFontColor', r, g, b);
+    }
+
+    setFillColor(r: number, g: number, b: number) {
+        this.callH('setFillColor', r, g, b);
+    }   
+
+    setStrokeColor(r: number, g: number, b: number) {
+        this.callH('setStrokeColor', r, g, b);
+    }
+
     render(): Uint8Array {
         const outPtr = this.callH('render');
         let end = outPtr;

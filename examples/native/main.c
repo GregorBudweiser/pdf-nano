@@ -30,8 +30,10 @@ int main(int argc, char** argv) {
     setFontSize(handle, 12);
     addText(handle, "· Basic Fonts/Text/Pages");
     addText(handle, "· Umlaut: äöü èàé");
-    addText(handle, "· Lines");
-    addText(handle, "· Tables");
+    addText(handle, "· Lines/Tables");
+    setFontColor(handle, 0.8, 0.2, 0.1);
+    addText(handle, "· Colors");
+    setFontColor(handle, 0, 0, 0);
 
     advanceCursor(handle, 15);
     setFont(handle, HELVETICA_BOLD);
@@ -41,15 +43,24 @@ int main(int argc, char** argv) {
     advanceCursor(handle, 5);
     setFont(handle, HELVETICA_REGULAR);
     setFontSize(handle, 12);
-    addText(handle, "· Colors/Background");
-    addText(handle, "· Alignment/Justify");
+    addText(handle, "· Right Align/Justify Text");
     
     advanceCursor(handle, 15);
-    int16_t cols[3] = { 100, 100, 100 };
-    const char* texts[3] = { "one ", "two", "three" };
+    int16_t cols[3] = { 100, 100, 280 };
+    const char* texts[3] = { "Table..", "..header..", "..with backgound color.." };
+    setFont(handle, HELVETICA_BOLD);
+    setFillColor(handle, 0.9, 0.9, 0.9);
     startTable(handle, cols, 3);
     writeRow(handle, texts, 3);
+    
+    const char* texts2[3] = { "One..", "Two..", "Three!" };
+    setFont(handle, HELVETICA_REGULAR);
+    setFillColor(handle, 1, 1, 1);
+    writeRow(handle, texts2, 3);
     finishTable(handle);
+
+    breakPage(handle);
+    addText(handle, "Second page!");
 
     saveAs(handle, argv[1]);
 

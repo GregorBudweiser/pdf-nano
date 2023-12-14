@@ -91,6 +91,26 @@ export fn getVersion() usize {
     return @intFromPtr(PDFNano.PDF_NANO_VERSION);
 }
 
+export fn breakPage(doc: *PDFDocument) i32 {
+    if (doc.breakPage()) {
+        return 0;
+    } else |_| {
+        return -1;
+    }
+}
+
+export fn setFontColor(doc: *PDFDocument, r: f32, g: f32, b: f32) void {
+    doc.setFontColor(r, g, b);
+}
+
+export fn setStrokeColor(doc: *PDFDocument, r: f32, g: f32, b: f32) void {
+    doc.setStrokeColor(r, g, b);
+}
+
+export fn setFillColor(doc: *PDFDocument, r: f32, g: f32, b: f32) void {
+    doc.setFillColor(r, g, b);
+}
+
 // allocator needed for wasm
 export fn alloc(len: usize) usize {
     if (std.heap.page_allocator.alloc(u64, len + 7 / 8)) |data| {
@@ -105,6 +125,8 @@ export fn free(ptr: usize) void {
     std.heap.page_allocator.free(std.mem.span(@as([*:0]u64, @ptrFromInt(ptr))));
 }
 
+/// Calling saveAs() "finishes" the document.
+/// After that, any changes to the pdf document will not generate a valid pdf file.
 export fn saveAs(doc: *PDFDocument, filename: [*:0]const u8) i32 {
     if (comptime arch.isWasm()) {
         return 0;

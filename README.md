@@ -8,10 +8,10 @@ The main feature is PDF-Nano's small size. Compiled to wasm, it weighs **less th
 To keep the code/binary small only a minimal set of features have been and will be added. Currently the following is supported:
 - Text (Latin-1 charset support only)
 - Lines
-- Fixed layout tables
+- Tables (fixed layout)
+- Colors (font, storke, fill/table background)
 
 On the todo list:
-- Colors, backgroud fill options
 - More text formatting and alignment options
 
 Not on the todo list (due to code size):
