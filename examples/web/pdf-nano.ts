@@ -13,6 +13,12 @@ export enum Font {
     ARIAL_BOLD
 };
 
+export enum TextAlignment {
+    LEFT,
+    CENTER,
+    RIGHT
+};
+
 export class PDFDocument {
     private static wasmInstance: WebAssembly.Instance;
     private static get memory(): Uint8Array {
@@ -95,6 +101,10 @@ export class PDFDocument {
 
     breakPage() {
         this.callH('breakPage');
+    }
+
+    setTextAlignment(alignment: TextAlignment) {
+        this.callH('setTextAlignment', alignment);
     }
 
     setFontColor(r: number, g: number, b: number) {

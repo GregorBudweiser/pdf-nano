@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
     setFont(handle, HELVETICA_BOLD);
     setFontSize(handle, 36);
     char title[100];
-    sprintf(title, "PDF-Nano v%s\0", getVersion());
+    sprintf(title, "PDF-Nano v%s", getVersion());
     addText(handle, title);
     addHorizontalLine(handle, 1.5);
 
@@ -34,6 +34,11 @@ int main(int argc, char** argv) {
     setFontColor(handle, 0.8, 0.2, 0.1);
     addText(handle, "· Colors");
     setFontColor(handle, 0, 0, 0);
+    setTextAlignment(handle, CENTERED);
+    addText(handle, "· Centered");
+    setTextAlignment(handle, RIGHT);
+    addText(handle, "· Right Align");
+    setTextAlignment(handle, LEFT);
 
     advanceCursor(handle, 15);
     setFont(handle, HELVETICA_BOLD);
@@ -43,7 +48,7 @@ int main(int argc, char** argv) {
     advanceCursor(handle, 5);
     setFont(handle, HELVETICA_REGULAR);
     setFontSize(handle, 12);
-    addText(handle, "· Right Align/Justify Text");
+    addText(handle, "· Justify Text");
     
     advanceCursor(handle, 15);
     int16_t cols[3] = { 100, 100, 280 };

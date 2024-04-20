@@ -3,6 +3,7 @@ const PDFDocument = @import("./document.zig").PDFDocument;
 const PageFormat = @import("./document.zig").PageFormat;
 const PageOrientation = @import("./document.zig").PageOrientation;
 const PredefinedFonts = @import("./font.zig").PredefinedFonts;
+const TextAlignment = @import("./layouter.zig").TextAlignment;
 
 pub fn main() !void {
     var doc = PDFDocument.init(std.heap.page_allocator);
@@ -33,6 +34,11 @@ pub fn main() !void {
     doc.setFontColor(0.8, 0.2, 0.1);
     try doc.addText("· Colors");
     doc.setFontColor(0, 0, 0);
+    doc.setTextAlignment(TextAlignment.CENTERED);
+    try doc.addText("· Centered");
+    doc.setTextAlignment(TextAlignment.RIGHT);
+    try doc.addText("· Right Align");
+    doc.setTextAlignment(TextAlignment.LEFT);
 
     doc.advanceCursor(15);
     doc.setFontById(PredefinedFonts.helveticaBold);
@@ -42,10 +48,10 @@ pub fn main() !void {
     doc.advanceCursor(5);
     doc.setFontById(PredefinedFonts.helveticaRegular);
     doc.setFontSize(12);
-    try doc.addText("· Right Align/Justify Text");
+    try doc.addText("· Justify Text");
 
     doc.advanceCursor(15);
-    const cols = [_]u16{ 100, 100, 280 };
+    const cols = [_]u16{ 100, 100, 286 };
     doc.startTable(&cols);
 
     const headers = [_][]const u8{ "Table..", "..header..", "..with backgound color.." };

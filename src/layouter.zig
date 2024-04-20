@@ -1,15 +1,22 @@
 const std = @import("std");
 const font = @import("font.zig");
 const unicode = @import("std").unicode;
+const PageProperties = @import("page_properties.zig").PageProperties;
+const PDFWriter = @import("writer.zig").PDFWriter;
+
+pub const TextAlignment = enum(c_uint) { LEFT, CENTERED, RIGHT };
 
 /// Internaly everything is in units; functions/methods return values in points.
 pub const Layouter = struct {
     text: []const u8 = undefined,
     utf8Iter: unicode.Utf8Iterator = undefined,
     pos: usize = undefined,
+    x: u16,
+    /// in font specific unit (unit per em)
     width: usize = undefined,
     fontSize: u16 = 12,
     font: font.Font,
+    alignment: TextAlignment,
 
     const Limiter = enum {
         whitespace,
@@ -25,11 +32,54 @@ pub const Layouter = struct {
     };
 
     /// @param: columnWidth in points (1/72th inch)
-    pub fn init(text: []const u8, columnWidth: u32, fontSize: u16, fontId: u16) !Layouter {
+    pub fn init(text: []const u8, columnStart: u16, columnWidth: u16, fontSize: u16, fontId: u16, alignment: TextAlignment) !Layouter {
         const usedFont = font.predefinedFonts[fontId - 1];
-        var layouter = Layouter{ .pos = 0, .text = text, .width = columnWidth * usedFont.unitsPerEm, .fontSize = fontSize, .font = usedFont };
+        var layouter = Layouter{
+            .pos = 0,
+            .text = text,
+            .x = columnStart,
+            .width = columnWidth * usedFont.unitsPerEm,
+            .fontSize = fontSize,
+            .font = usedFont,
+            .alignment = alignment,
+        };
         layouter.utf8Iter = (try unicode.Utf8View.init(text)).iterator();
         return layouter;
+    }
+
+    pub fn layoutLine(self: *Layouter, line: []const u8, y: i32, writer: *PDFWriter) !void {
+        switch (self.alignment) {
+            .RIGHT => {
+                const x = @as(usize, @intCast(self.x)) + self.width / self.font.unitsPerEm - try self.getLineLength(line) / self.font.unitsPerEm;
+                try writer.putText(line, self.font.id, self.fontSize, @intCast(x), y);
+            },
+            .CENTERED => {
+                const x = @as(usize, @intCast(self.x)) + (self.width / self.font.unitsPerEm - try self.getLineLength(line) / self.font.unitsPerEm) / 2;
+                try writer.putText(line, self.font.id, self.fontSize, @intCast(x), y);
+            },
+            // default is left aligned
+            else => {
+                try writer.putText(line, self.font.id, self.fontSize, self.x, y);
+            },
+        }
+    }
+
+    /// length of the line in current font's units per em
+    /// ignores whitespace characters at the end of the line/string
+    /// by design no whitespace should be at the beginning of the line/string
+    fn getLineLength(self: *const Layouter, line: []const u8) !usize {
+        var currentWidth: usize = 0;
+        var whiteSpaceAtEnd: usize = 0;
+        var iter = (try unicode.Utf8View.init(line)).iterator();
+        while (iter.nextCodepoint()) |char| {
+            currentWidth += self.font.glyphAdvances.*[char] * self.fontSize;
+            if (char < 0x100 and std.ascii.isWhitespace(@intCast(char))) {
+                whiteSpaceAtEnd += self.font.glyphAdvances.*[char] * self.fontSize;
+            } else {
+                whiteSpaceAtEnd = 0;
+            }
+        }
+        return currentWidth - whiteSpaceAtEnd;
     }
 
     pub fn getLineHeight(self: *const Layouter) u16 {
@@ -49,6 +99,8 @@ pub const Layouter = struct {
         return self.text[self.pos..];
     }
 
+    /// Get the longest sequence of words that still fits into the given column width
+    /// If the first word is too large to fit, cut it (if possible at special chars such as dash, underscore etc.)
     pub fn nextLine(self: *Layouter) ?[]const u8 {
         if (self.pos >= self.text.len) {
             return null;
@@ -137,17 +189,17 @@ pub const Layouter = struct {
 };
 
 test "chop overflowing word at natrual breaks" {
-    var parser = try Layouter.init("my_extremely_long_file_name.zip", 72, 12, font.PredefinedFonts.helveticaRegular);
+    var parser = try Layouter.init("my_extremely_long_file_name.zip", 0, 72, 12, font.PredefinedFonts.helveticaRegular, TextAlignment.LEFT);
     try std.testing.expectEqualSlices(u8, "my_", parser.nextLine() orelse ""); // TODO: use .? but this crashes zig 0.11.0
 }
 
 test "chop overflowing word" {
-    var parser = try Layouter.init("abcdefghijklmnopqrstuvwxyz", 72, 12, font.PredefinedFonts.helveticaRegular);
+    var parser = try Layouter.init("abcdefghijklmnopqrstuvwxyz", 0, 72, 12, font.PredefinedFonts.helveticaRegular, TextAlignment.LEFT);
     try std.testing.expectEqualSlices(u8, "abcdefghijkl", parser.nextLine() orelse ""); // TODO: use .? but this crashes zig 0.11.0
 }
 
 test "split text into rows" {
-    var parser = try Layouter.init("a a a a a a a a a a a a a a a a a a a a a", 72, 12, font.PredefinedFonts.helveticaRegular);
+    var parser = try Layouter.init("a a a a a a a a a a a a a a a a a a a a a", 0, 72, 12, font.PredefinedFonts.helveticaRegular, TextAlignment.LEFT);
     try std.testing.expectEqualSlices(u8, "a a a a a a a ", parser.nextLine() orelse "");
     try std.testing.expectEqualSlices(u8, "a a a a a a a ", parser.nextLine() orelse "");
     try std.testing.expectEqualSlices(u8, "a a a a a a a", parser.nextLine() orelse "");
@@ -155,6 +207,6 @@ test "split text into rows" {
 }
 
 test "handle umlaut" {
-    var parser = try Layouter.init("ä ö ü", 72, 12, font.PredefinedFonts.helveticaRegular);
+    var parser = try Layouter.init("ä ö ü", 0, 72, 12, font.PredefinedFonts.helveticaRegular, TextAlignment.LEFT);
     try std.testing.expectEqualSlices(u8, "ä ö ü", parser.nextLine() orelse "");
 }

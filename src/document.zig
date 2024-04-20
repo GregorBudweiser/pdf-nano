@@ -4,9 +4,11 @@ const Color = @import("writer.zig").Color;
 const Font = @import("font.zig").Font;
 const PredefinedFonts = @import("font.zig").PredefinedFonts;
 const Layouter = @import("layouter.zig").Layouter;
+const TextAlignment = @import("layouter.zig").TextAlignment;
 const Table = @import("table.zig").Table;
+const PageProperties = @import("page_properties.zig").PageProperties;
 
-pub const PDF_NANO_VERSION: [*:0]const u8 = "0.2.0";
+pub const PDF_NANO_VERSION: [*:0]const u8 = "0.3.0";
 
 pub const PageOrientation = enum(c_uint) { PORTRAIT, LANDSCAPE };
 pub const PageFormat = enum(c_uint) { LETTER, A4 };
@@ -26,33 +28,7 @@ const Cursor = struct {
     fontColor: Color, // Text + Fill
     strokeColor: Color, // Lines / Strokes
     fillColor: Color, // Brackground (e.g. table cell bg)
-};
-
-/// Page properties for a single page in the document
-const PageProperties = struct {
-    width: u16 = 612,
-    height: u16 = 792,
-    documentBorder: u16 = 72 * 3 / 4, // 3/4 inch
-
-    pub fn getContentTop(self: *const PageProperties) u16 {
-        return self.height - self.documentBorder;
-    }
-
-    pub fn getContentBottom(self: *const PageProperties) u16 {
-        return self.documentBorder;
-    }
-
-    pub fn getContentWidth(self: *const PageProperties) u16 {
-        return self.width - 2 * self.documentBorder;
-    }
-
-    pub fn getContentLeft(self: *const PageProperties) u16 {
-        return self.documentBorder;
-    }
-
-    pub fn getContentRight(self: *const PageProperties) u16 {
-        return self.width - self.documentBorder;
-    }
+    alignment: TextAlignment,
 };
 
 /// High level document struct for creating a PDF document
@@ -124,10 +100,21 @@ pub const PDFDocument = struct {
         try self.writer.putLine(thickness, self.pageProperties.getContentLeft(), self.cursor.y, self.pageProperties.getContentRight(), self.cursor.y);
     }
 
+    pub fn setTextAlignment(self: *PDFDocument, alignment: TextAlignment) void {
+        self.cursor.alignment = alignment;
+    }
+
     pub fn addText(self: *PDFDocument, text: []const u8) !void {
-        var layouter = try Layouter.init(text, self.pageProperties.getContentWidth(), self.cursor.fontSize, self.cursor.fontId);
+        var layouter = try Layouter.init(
+            text,
+            self.pageProperties.getContentLeft(),
+            self.pageProperties.getContentWidth(),
+            self.cursor.fontSize,
+            self.cursor.fontId,
+            self.cursor.alignment,
+        );
         var y: i32 = self.cursor.y;
-        while (layouter.nextLine()) |token| {
+        while (layouter.nextLine()) |line| {
             // advance cursor by this new line, creating new page if necessary
             y -= layouter.getLineHeight();
             if (y + layouter.getLineGap() < self.pageProperties.getContentBottom()) {
@@ -137,7 +124,8 @@ pub const PDFDocument = struct {
             }
 
             try self.writer.setColor(self.cursor.fontColor);
-            try self.writer.putText(token, self.cursor.fontId, layouter.fontSize, self.pageProperties.documentBorder, y + layouter.getLineHeight() - layouter.getBaseline());
+            try layouter.layoutLine(line, y + layouter.getLineHeight() - layouter.getBaseline(), &self.writer);
+            //try self.writer.putText(line, self.cursor.fontId, layouter.fontSize, self.pageProperties.documentBorder, y + layouter.getLineHeight() - layouter.getBaseline());
         }
         self.cursor.y = @intCast(y);
     }
@@ -196,7 +184,7 @@ test "create empty pdf" {
 
     try document.setupDocument(PageFormat.A4, PageOrientation.PORTRAIT);
 
-    var result = try document.render();
+    const result = try document.render();
     try std.testing.expect(result.len > 0);
 }
 

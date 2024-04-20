@@ -10,9 +10,11 @@ To keep the code/binary small only a minimal set of features have been and will 
 - Lines
 - Tables (fixed layout)
 - Colors (font, storke, fill/table background)
+- Alignment (left, center, right)
 
 On the todo list:
-- More text formatting and alignment options
+- Text justify
+- Optionally repeat table header on new page
 
 Not on the todo list (due to code size):
 - TrueType fonts (if you need a small library you probably don't have space for fonts anyway)
@@ -23,6 +25,13 @@ Not on the todo list (due to code size):
 PDF-Nano is written in Zig, so you will need the Zig compiler. Then simply compile for your target platform (e.g. wasm):
 
     zig build -Doptimize=ReleaseSmall -Dtarget=wasm32-freestanding
+
+### Build compatibility
+| PDF-Nano     | Zig                        |
+|--------------|----------------------------|
+| v0.1.0       | v0.11.0                    |
+| v0.2.0       | v0.11.0                    |
+| v0.3.0       | v0.12.0-dev.3291+17bad9f88 |
 
 ### Usage
 PDF-Nano provides a text-editor like interface, meaning it handles layouting/positioning for you.

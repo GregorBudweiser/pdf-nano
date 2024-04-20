@@ -99,6 +99,10 @@ export fn breakPage(doc: *PDFDocument) i32 {
     }
 }
 
+export fn setTextAlignment(doc: *PDFDocument, alignment: u32) void {
+    doc.setTextAlignment(@enumFromInt(alignment));
+}
+
 export fn setFontColor(doc: *PDFDocument, r: f32, g: f32, b: f32) void {
     doc.setFontColor(r, g, b);
 }

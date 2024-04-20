@@ -17,9 +17,19 @@ enum Font {
     HELVETICA_BOLD
 };
 
+enum TextAlignment {
+    LEFT,
+    CENTERED,
+    RIGHT
+};
+
 const char* getVersion();
 
-encoder_handle createEncoder(int32_t format, int32_t orientation);
+/**
+ * @param format PageFormat enum
+ * @param orientation PageOrientation enum
+ */
+encoder_handle createEncoder(uint32_t format, uint32_t orientation);
 
 void freeEncoder(encoder_handle handle);
 
@@ -38,8 +48,12 @@ int32_t finishTable(encoder_handle handle);
 
 int32_t breakPage(encoder_handle handle);
 
-int32_t setFontColor(encoder_handle handle, float r, float g, float b);
-int32_t setFillColor(encoder_handle handle, float r, float g, float b);
-int32_t setStrokeColor(encoder_handle handle, float r, float g, float b);
+/**
+ * @param alignment TextAlignment enum
+ */
+void setTextAlignment(encoder_handle handle, uint32_t alignment);
+void setFontColor(encoder_handle handle, float r, float g, float b);
+void setFillColor(encoder_handle handle, float r, float g, float b);
+void setStrokeColor(encoder_handle handle, float r, float g, float b);
 
 int32_t saveAs(encoder_handle handle, const char* filename);

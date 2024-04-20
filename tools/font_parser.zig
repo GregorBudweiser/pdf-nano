@@ -12,10 +12,10 @@ const OffsetSubtable = struct {
 
     pub fn parse(self: *OffsetSubtable, data: []const u8) usize {
         self.scalerType = data[0..4].*;
-        self.numTables = std.mem.readIntBig(u16, data[4..6]);
-        self.searchRange = std.mem.readIntBig(u16, data[6..8]);
-        self.entrySelector = std.mem.readIntBig(u16, data[8..10]);
-        self.rangeShift = std.mem.readIntBig(u16, data[10..12]);
+        self.numTables = std.mem.readInt(u16, data[4..6], std.builtin.Endian.big);
+        self.searchRange = std.mem.readInt(u16, data[6..8], std.builtin.Endian.big);
+        self.entrySelector = std.mem.readInt(u16, data[8..10], std.builtin.Endian.big);
+        self.rangeShift = std.mem.readInt(u16, data[10..12], std.builtin.Endian.big);
         return 12;
     }
 };
@@ -28,9 +28,9 @@ const TableDirectory = struct {
 
     pub fn parse(self: *TableDirectory, data: []const u8) usize {
         self.tag = data[0..4].*;
-        self.checkSum = std.mem.readIntBig(u32, data[4..8]);
-        self.offset = std.mem.readIntBig(u32, data[8..12]);
-        self.length = std.mem.readIntBig(u32, data[12..16]);
+        self.checkSum = std.mem.readInt(u32, data[4..8], std.builtin.Endian.big);
+        self.offset = std.mem.readInt(u32, data[8..12], std.builtin.Endian.big);
+        self.length = std.mem.readInt(u32, data[12..16], std.builtin.Endian.big);
         return 16;
     }
 };
@@ -39,7 +39,7 @@ const HEAD = struct {
     unitsPerEm: u16 = undefined,
 
     pub fn parse(self: *HEAD, data: []const u8) usize {
-        self.unitsPerEm = std.mem.readIntBig(u16, data[18..20]);
+        self.unitsPerEm = std.mem.readInt(u16, data[18..20], std.builtin.Endian.big);
         return 16;
     }
 };
@@ -51,10 +51,10 @@ const HHEA = struct {
     numOfLongHorMetrics: u16,
 
     pub fn parse(self: *HHEA, data: []const u8) usize {
-        self.ascent = std.mem.readIntBig(i16, data[4..6]);
-        self.descent = std.mem.readIntBig(i16, data[6..8]);
-        self.lineGap = std.mem.readIntBig(i16, data[8..10]);
-        self.numOfLongHorMetrics = std.mem.readIntBig(u16, data[34..36]);
+        self.ascent = std.mem.readInt(i16, data[4..6], std.builtin.Endian.big);
+        self.descent = std.mem.readInt(i16, data[6..8], std.builtin.Endian.big);
+        self.lineGap = std.mem.readInt(i16, data[8..10], std.builtin.Endian.big);
+        self.numOfLongHorMetrics = std.mem.readInt(u16, data[34..36], std.builtin.Endian.big);
         return 4;
     }
 };
@@ -71,8 +71,8 @@ const HMTX = struct {
         var i: u16 = 0;
         var pos: usize = 0;
         while (i < count) : (i += 1) {
-            self.hMetrics[i].advanceWidth = std.mem.readIntBig(u16, data[pos..][0..2]);
-            self.hMetrics[i].leftSideBearing = std.mem.readIntBig(i16, data[pos..][2..4]);
+            self.hMetrics[i].advanceWidth = std.mem.readInt(u16, data[pos..][0..2], std.builtin.Endian.big);
+            self.hMetrics[i].leftSideBearing = std.mem.readInt(i16, data[pos..][2..4], std.builtin.Endian.big);
             pos += 4;
         }
 
@@ -88,8 +88,8 @@ const CMAPIndex = struct {
     numSubtables: u16,
 
     pub fn parse(self: *CMAPIndex, data: []const u8) usize {
-        self.version = std.mem.readIntBig(u16, data[0..2]);
-        self.numSubtables = std.mem.readIntBig(u16, data[2..4]);
+        self.version = std.mem.readInt(u16, data[0..2], std.builtin.Endian.big);
+        self.numSubtables = std.mem.readInt(u16, data[2..4], std.builtin.Endian.big);
         return 4;
     }
 };
@@ -100,9 +100,9 @@ const CMAPSubtable = struct {
     offset: u32,
 
     pub fn parse(self: *CMAPSubtable, data: []const u8) usize {
-        self.platformId = std.mem.readIntBig(u16, data[0..2]);
-        self.platformSpecificId = std.mem.readIntBig(u16, data[2..4]);
-        self.offset = std.mem.readIntBig(u32, data[4..8]);
+        self.platformId = std.mem.readInt(u16, data[0..2], std.builtin.Endian.big);
+        self.platformSpecificId = std.mem.readInt(u16, data[2..4], std.builtin.Endian.big);
+        self.offset = std.mem.readInt(u32, data[4..8], std.builtin.Endian.big);
         return 8;
     }
 };
@@ -117,19 +117,19 @@ const CMAPFormat = struct {
     searchRange: u16,
     entrySelector: u16,
     rangeShift: u16,
-    mapping: [0xFFFF]u16 = [_]u16{0x0} ** 0xFFFF,
+    mapping: [0x10000]u16 = [_]u16{0x0} ** 0x10000,
 
     pub fn parse(self: *CMAPFormat, data: []const u8) void {
-        self.format = std.mem.readIntBig(u16, data[0..2]);
-        self.length = std.mem.readIntBig(u16, data[2..4]);
-        self.language = std.mem.readIntBig(u16, data[4..6]);
-        std.log.debug("CMAP fmt: format={d}, length={d}\n", .{ self.format, self.length });
+        self.format = std.mem.readInt(u16, data[0..2], std.builtin.Endian.big);
+        self.length = std.mem.readInt(u16, data[2..4], std.builtin.Endian.big);
+        self.language = std.mem.readInt(u16, data[4..6], std.builtin.Endian.big);
+        std.log.debug("CMAP fmt: format={d}, length={d}", .{ self.format, self.length });
         if (self.format == 4) {
-            self.segCount = std.mem.readIntBig(u16, data[6..8]) / 2;
-            self.searchRange = std.mem.readIntBig(u16, data[8..10]);
-            self.entrySelector = std.mem.readIntBig(u16, data[10..12]);
-            self.rangeShift = std.mem.readIntBig(u16, data[12..14]);
-            std.log.debug("CMAP fmt segCount: {d}, searchRange: {d}, entrySelector: {d}, rangeshift: {d}\n", .{ self.segCount, self.searchRange, self.entrySelector, self.rangeShift });
+            self.segCount = std.mem.readInt(u16, data[6..8], std.builtin.Endian.big) / 2;
+            self.searchRange = std.mem.readInt(u16, data[8..10], std.builtin.Endian.big);
+            self.entrySelector = std.mem.readInt(u16, data[10..12], std.builtin.Endian.big);
+            self.rangeShift = std.mem.readInt(u16, data[12..14], std.builtin.Endian.big);
+            std.log.debug("CMAP fmt segCount: {d}, searchRange: {d}, entrySelector: {d}, rangeshift: {d}", .{ self.segCount, self.searchRange, self.entrySelector, self.rangeShift });
             var i: u16 = 0;
             while (i < self.segCount) : (i += 1) {
                 const endCode = 14 + i * 2;
@@ -138,20 +138,20 @@ const CMAPFormat = struct {
                 const idRangeOffset = idDelta + 2 * self.segCount;
                 //const glyphIndexArray = idRangeOffset + 2 * self.segCount;
 
-                const start = std.mem.readIntBig(u16, data[startCode..][0..2]);
-                const end = std.mem.readIntBig(u16, data[endCode..][0..2]);
-                const delta = std.mem.readIntBig(u16, data[idDelta..][0..2]);
-                const range = std.mem.readIntBig(u16, data[idRangeOffset..][0..2]);
+                const start = std.mem.readInt(u16, data[startCode..][0..2], std.builtin.Endian.big);
+                const end = std.mem.readInt(u16, data[endCode..][0..2], std.builtin.Endian.big);
+                const delta = std.mem.readInt(u16, data[idDelta..][0..2], std.builtin.Endian.big);
+                const range = std.mem.readInt(u16, data[idRangeOffset..][0..2], std.builtin.Endian.big);
 
-                //std.log.debug("Segment: [{d},{d}], {d}, {d}\n", .{ start, end, delta, range });
+                std.log.debug("Segment: [{d},{d}], {d}, {d}", .{ start, end, delta, range });
 
                 var charCode = start;
-                while (charCode < end) : (charCode += 1) {
+                while (charCode <= end and charCode != 0xFFFF) : (charCode += 1) {
                     var glyphIndex: u16 = 0;
                     if (range == 0) {
                         glyphIndex = charCode +% delta;
                     } else {
-                        glyphIndex = std.mem.readIntBig(u16, data[idRangeOffset + range + 2 * (charCode - start) ..][0..2]);
+                        glyphIndex = std.mem.readInt(u16, data[idRangeOffset + range + 2 * (charCode - start) ..][0..2], std.builtin.Endian.big);
                     }
                     self.mapping[charCode] = glyphIndex;
                 }
@@ -172,7 +172,7 @@ const CMAP = struct {
         while (i < self.index.numSubtables) : (i += 1) {
             var sub: CMAPSubtable = undefined;
             pos += sub.parse(data[pos..]);
-            std.log.debug("CMAP sub: {any}\n", .{sub});
+            std.log.debug("CMAP sub: {any}", .{sub});
 
             // unicode
             if (sub.platformId == 0) {
@@ -217,8 +217,8 @@ const TTFParser = struct {
         while (i < self.subtable.numTables) : (i += 1) {
             self.pos += self.tableDir.parse(self.buffer[self.pos..]);
             if (std.mem.eql(u8, &self.tableDir.tag, "cmap")) {
-                var start = self.tableDir.offset;
-                var end = start + self.tableDir.length;
+                const start = self.tableDir.offset;
+                const end = start + self.tableDir.length;
                 if (cmap.parse(self.buffer[start..end])) |fmt| {
                     cmapFormat = fmt;
                 }
@@ -233,8 +233,8 @@ const TTFParser = struct {
             self.pos += self.tableDir.parse(self.buffer[self.pos..]);
             if (std.mem.eql(u8, &self.tableDir.tag, "head")) {
                 std.log.debug("Dir entry: {any}\n", .{self.tableDir});
-                var start = self.tableDir.offset;
-                var end = start + self.tableDir.length;
+                const start = self.tableDir.offset;
+                const end = start + self.tableDir.length;
                 _ = head.parse(self.buffer[start..end]);
                 std.log.debug("head: {any}\n", .{head});
                 break;
@@ -244,8 +244,8 @@ const TTFParser = struct {
         while (i < self.subtable.numTables) : (i += 1) {
             self.pos += self.tableDir.parse(self.buffer[self.pos..]);
             if (std.mem.eql(u8, &self.tableDir.tag, "hhea")) {
-                var start = self.tableDir.offset;
-                var end = start + self.tableDir.length;
+                const start = self.tableDir.offset;
+                const end = start + self.tableDir.length;
                 _ = hhea.parse(self.buffer[start..end]);
 
                 std.log.debug("Dir entry: {any}\n", .{self.tableDir});
@@ -258,8 +258,8 @@ const TTFParser = struct {
             self.pos += self.tableDir.parse(self.buffer[self.pos..]);
             if (std.mem.eql(u8, &self.tableDir.tag, "hmtx")) {
                 std.log.debug("HMTX: {any}\n", .{self.tableDir});
-                var start = self.tableDir.offset;
-                var end = start + self.tableDir.length;
+                const start = self.tableDir.offset;
+                const end = start + self.tableDir.length;
                 hmtx.parse(self.buffer[start..end], hhea.numOfLongHorMetrics);
             }
         }
@@ -270,11 +270,19 @@ const TTFParser = struct {
         std.log.debug("oe: {any}\n", .{hmtx.hMetrics[cmapFormat.mapping[0xf6]]});
         std.log.debug("u : {any}\n", .{hmtx.hMetrics[cmapFormat.mapping["u"[0]]]});
         std.log.debug("ue: {any}\n", .{hmtx.hMetrics[cmapFormat.mapping[0xfc]]});
+        std.log.debug("~ : {d} => {any}\n", .{ "~"[0], hmtx.hMetrics[cmapFormat.mapping["~"[0]]] });
 
         var latin1: [0x100]u16 = undefined;
         var char: u16 = 0;
         while (char < latin1.len) : (char += 1) {
-            latin1[char] = hmtx.hMetrics[cmapFormat.mapping[char]].advanceWidth;
+            const glyphIndex = cmapFormat.mapping[char];
+            // TODO: figure out limit..
+            if (glyphIndex < 43690) {
+                latin1[char] = hmtx.hMetrics[cmapFormat.mapping[char]].advanceWidth;
+            } else {
+                latin1[char] = 0;
+            }
+            std.log.debug("glyphIdx: {d} => {d}", .{ cmapFormat.mapping[char], latin1[char] });
         }
         std.log.debug("{any}\n", .{latin1[0..].*});
     }
@@ -282,7 +290,7 @@ const TTFParser = struct {
 
 test "init deinit" {
     std.testing.log_level = .debug;
-    var parser = try TTFParser.init("res/helvetica.ttf");
+    var parser = try TTFParser.init("res/helvetica-bold.ttf");
     parser.parse();
     try testing.expect(0 == 0);
 }

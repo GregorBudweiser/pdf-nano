@@ -39,7 +39,7 @@ pub const Table = struct {
 
     pub fn writeRow(self: *Table, doc: *PDFDocument) !void {
         const y = self.currentRowY;
-        var marker = doc.writer.createMarker();
+        const marker = doc.writer.createMarker();
         for (self.getCells()) |*cell| {
             try self.writeCell(doc, cell, &doc.writer);
         }
@@ -93,7 +93,7 @@ pub const Table = struct {
 
     fn writeCell(self: *Table, doc: *PDFDocument, cell: *Cell, writer: *PDFWriter) !void {
         var remainingText = cell.remainingText;
-        var layouter = try Layouter.init(remainingText, cell.width - 2 * self.padding, doc.cursor.fontSize, doc.cursor.fontId);
+        var layouter = try Layouter.init(remainingText, cell.x + self.padding, cell.width - 2 * self.padding, doc.cursor.fontSize, doc.cursor.fontId, doc.cursor.alignment);
         var y: i32 = self.currentRowY;
         while (layouter.nextLine()) |token| {
             // advance cursor by this new line, breaking loop if we run out of text
@@ -105,7 +105,8 @@ pub const Table = struct {
             }
 
             try writer.setColor(doc.cursor.fontColor);
-            try writer.putText(token, doc.cursor.fontId, layouter.fontSize, self.getCurrentCell().x + self.padding, y - self.padding + 1);
+            //try writer.putText(token, doc.cursor.fontId, layouter.fontSize, self.getCurrentCell().x + self.padding, y - self.padding + 1);
+            try layouter.layoutLine(token, y - self.padding + 1, writer);
             remainingText = layouter.remainingText();
             cell.height = @intCast(self.currentRowY - y + 2 * self.padding + layouter.getLineHeight() - layouter.getBaseline());
         }
