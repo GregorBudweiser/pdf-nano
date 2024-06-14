@@ -1,4 +1,4 @@
 zig-out/
-zig-cache/
 res/*.ttf
-.vscode/*
+.zig-cache/
+.vscode/

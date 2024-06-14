@@ -8,7 +8,7 @@ const TextAlignment = @import("layouter.zig").TextAlignment;
 const Table = @import("table.zig").Table;
 const PageProperties = @import("page_properties.zig").PageProperties;
 
-pub const PDF_NANO_VERSION: [*:0]const u8 = "0.3.0";
+pub const PDF_NANO_VERSION: [*:0]const u8 = "0.4.0";
 
 pub const PageOrientation = enum(c_uint) { PORTRAIT, LANDSCAPE };
 pub const PageFormat = enum(c_uint) { LETTER, A4 };

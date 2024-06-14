@@ -32,6 +32,7 @@ PDF-Nano is written in Zig, so you will need the Zig compiler. Then simply compi
 | v0.1.0       | v0.11.0                    |
 | v0.2.0       | v0.11.0                    |
 | v0.3.0       | v0.12.0-dev.3291+17bad9f88 |
+| v0.4.0       | v0.13.0                    |
 
 ### Usage
 PDF-Nano provides a text-editor like interface, meaning it handles layouting/positioning for you.
