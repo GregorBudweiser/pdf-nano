@@ -15,7 +15,7 @@ export enum Font {
 
 export enum TextAlignment {
     LEFT,
-    CENTER,
+    CENTERED,
     RIGHT
 };
 
@@ -121,6 +121,9 @@ export class PDFDocument {
 
     render(): Uint8Array {
         const outPtr = this.callH('render');
+        if (outPtr == 0) {
+            throw "Rendering PDF failed";
+        }
         let end = outPtr;
         const array = PDFDocument.memory;
         while (array.at(end) != 0) {
@@ -151,6 +154,10 @@ export class PDFDocument {
     }
 
     private call(functionName: string, ...args: any[]): any {
-        return (<any>PDFDocument.wasmInstance.exports[functionName])(...args);
+        const result = (<any>PDFDocument.wasmInstance.exports[functionName])(...args);
+        if (result == -1) {
+            throw "Error while generating PDF @" + functionName; 
+        }
+        return result;
     }
 }
