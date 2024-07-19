@@ -87,8 +87,8 @@ export fn finishTable(doc: *PDFDocument) i32 {
     }
 }
 
-export fn getVersion() usize {
-    return @intFromPtr(PDFNano.PDF_NANO_VERSION);
+export fn getVersion() [*:0]const u8 {
+    return PDFNano.PDF_NANO_VERSION;
 }
 
 export fn breakPage(doc: *PDFDocument) i32 {

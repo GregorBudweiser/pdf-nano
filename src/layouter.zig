@@ -72,9 +72,9 @@ pub const Layouter = struct {
         var whiteSpaceAtEnd: usize = 0;
         var iter = (try unicode.Utf8View.init(line)).iterator();
         while (iter.nextCodepoint()) |char| {
-            currentWidth += self.font.glyphAdvances.*[char] * self.fontSize;
+            currentWidth += self.font.glyphAdvances[char] * self.fontSize;
             if (char < 0x100 and std.ascii.isWhitespace(@intCast(char))) {
-                whiteSpaceAtEnd += self.font.glyphAdvances.*[char] * self.fontSize;
+                whiteSpaceAtEnd += self.font.glyphAdvances[char] * self.fontSize;
             } else {
                 whiteSpaceAtEnd = 0;
             }
@@ -141,7 +141,11 @@ pub const Layouter = struct {
         self.utf8Iter.i = pos;
 
         while (self.utf8Iter.nextCodepoint()) |char| {
-            currentWidth += self.font.glyphAdvances.*[char] * self.fontSize;
+            if (char < self.font.glyphAdvances.len) {
+                currentWidth += self.font.glyphAdvances[char] * self.fontSize;
+            } else {
+                currentWidth += self.font.max * self.fontSize;
+            }
             if (char == std.ascii.control_code.lf) {
                 word.limiter = Limiter.linefeed;
                 break;
@@ -166,7 +170,7 @@ pub const Layouter = struct {
         var split: usize = 0;
         var lastPos: usize = pos; // position before current character/codepoint
         while (self.utf8Iter.nextCodepoint()) |char| {
-            currentWidth += self.font.glyphAdvances.*[char] * self.fontSize;
+            currentWidth += self.font.glyphAdvances[char] * self.fontSize;
 
             // natural split point
             if (char == '_' or char == '.' or char == '-') {
@@ -190,23 +194,23 @@ pub const Layouter = struct {
 
 test "chop overflowing word at natrual breaks" {
     var parser = try Layouter.init("my_extremely_long_file_name.zip", 0, 72, 12, font.PredefinedFonts.helveticaRegular, TextAlignment.LEFT);
-    try std.testing.expectEqualSlices(u8, "my_", parser.nextLine() orelse ""); // TODO: use .? but this crashes zig 0.11.0
+    try std.testing.expectEqualSlices(u8, "my_", parser.nextLine().?);
 }
 
 test "chop overflowing word" {
     var parser = try Layouter.init("abcdefghijklmnopqrstuvwxyz", 0, 72, 12, font.PredefinedFonts.helveticaRegular, TextAlignment.LEFT);
-    try std.testing.expectEqualSlices(u8, "abcdefghijkl", parser.nextLine() orelse ""); // TODO: use .? but this crashes zig 0.11.0
+    try std.testing.expectEqualSlices(u8, "abcdefghijkl", parser.nextLine().?);
 }
 
 test "split text into rows" {
     var parser = try Layouter.init("a a a a a a a a a a a a a a a a a a a a a", 0, 72, 12, font.PredefinedFonts.helveticaRegular, TextAlignment.LEFT);
-    try std.testing.expectEqualSlices(u8, "a a a a a a a ", parser.nextLine() orelse "");
-    try std.testing.expectEqualSlices(u8, "a a a a a a a ", parser.nextLine() orelse "");
-    try std.testing.expectEqualSlices(u8, "a a a a a a a", parser.nextLine() orelse "");
+    try std.testing.expectEqualSlices(u8, "a a a a a a a ", parser.nextLine().?);
+    try std.testing.expectEqualSlices(u8, "a a a a a a a ", parser.nextLine().?);
+    try std.testing.expectEqualSlices(u8, "a a a a a a a", parser.nextLine().?);
     try std.testing.expectEqual(@as(?[]const u8, null), parser.nextLine());
 }
 
 test "handle umlaut" {
     var parser = try Layouter.init("ä ö ü", 0, 72, 12, font.PredefinedFonts.helveticaRegular, TextAlignment.LEFT);
-    try std.testing.expectEqualSlices(u8, "ä ö ü", parser.nextLine() orelse "");
+    try std.testing.expectEqualSlices(u8, "ä ö ü", parser.nextLine().?);
 }
