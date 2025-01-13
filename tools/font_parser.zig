@@ -45,15 +45,15 @@ const HEAD = struct {
 };
 
 const HHEA = struct {
-    ascent: i16, // "FWord" i.e. to be divided by unitsPerEm?
+    ascent: u16, // "FWord" i.e. to be divided by unitsPerEm?
     descent: i16,
-    lineGap: i16,
+    lineGap: u16,
     numOfLongHorMetrics: u16,
 
     pub fn parse(self: *HHEA, data: []const u8) usize {
-        self.ascent = std.mem.readInt(i16, data[4..6], std.builtin.Endian.big);
+        self.ascent = std.mem.readInt(u16, data[4..6], std.builtin.Endian.big);
         self.descent = std.mem.readInt(i16, data[6..8], std.builtin.Endian.big);
-        self.lineGap = std.mem.readInt(i16, data[8..10], std.builtin.Endian.big);
+        self.lineGap = std.mem.readInt(u16, data[8..10], std.builtin.Endian.big);
         self.numOfLongHorMetrics = std.mem.readInt(u16, data[34..36], std.builtin.Endian.big);
         return 4;
     }
@@ -290,7 +290,7 @@ const TTFParser = struct {
 
 test "init deinit" {
     std.testing.log_level = .debug;
-    var parser = try TTFParser.init("res/helvetica-bold.ttf");
+    var parser = try TTFParser.init("res/courier.ttf");
     parser.parse();
     try testing.expect(0 == 0);
 }

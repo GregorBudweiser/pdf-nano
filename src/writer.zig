@@ -23,8 +23,8 @@ pub const PDFWriter = struct {
     /// current page object
     currentPage: PageDef = undefined,
 
-    // TODO: manage fonts properly..
-    fonts: [2]usize = undefined,
+    // font ids
+    fonts: [font.predefinedFonts.len]usize = undefined,
 
     /// Definition of a pdf stream object
     const StreamDef = struct {
@@ -67,7 +67,7 @@ pub const PDFWriter = struct {
         _ = try self.createIRefID(); // use up objectId 0 and ignore it.
         try self.buffer.appendSlice("%PDF-1.6\n"); // write header
 
-        const fonts = [2][]const u8{ "Helvetica", "Helvetica-Bold" };
+        const fonts = [_][]const u8{ "Helvetica", "Helvetica-Bold", "Courier" };
         for (fonts, 0..) |f, i| {
             self.fonts[i] = try self.startObject();
             try self.appendFormatted("<<\n/Type /Font\n/Subtype /Type1\n/Name /F{d}\n/BaseFont /{s}\n/Encoding /WinAnsiEncoding\n>>\n", .{ i + 1, f });
@@ -157,6 +157,7 @@ pub const PDFWriter = struct {
         try self.endStream(page.stream);
         try self.endObject();
 
+        // TODO: automate fonts ids..
         const pageId = try self.startObject();
         const pageString =
             \\<<
@@ -166,6 +167,7 @@ pub const PDFWriter = struct {
             \\ /Font <<
             \\  /F1 {d} 0 R
             \\  /F2 {d} 0 R
+            \\  /F3 {d} 0 R
             \\ >>
             \\>>
             \\/MediaBox [0 0 {d} {d}]
@@ -173,7 +175,7 @@ pub const PDFWriter = struct {
             \\>>
             \\
         ;
-        try self.appendFormatted(pageString, .{ pageTreeId, self.fonts[0], self.fonts[1], page.width, page.height, page.pageId });
+        try self.appendFormatted(pageString, .{ pageTreeId, self.fonts[0], self.fonts[1], self.fonts[2], page.width, page.height, page.pageId });
         try self.endObject();
         try self.pageIds.append(pageId);
     }

@@ -26,9 +26,10 @@ int main(int argc, char** argv) {
     addText(handle, "Done:");
 
     advanceCursor(handle, 5);
-    setFont(handle, HELVETICA_REGULAR);
+    setFont(handle, COURIER);
     setFontSize(handle, 12);
     addText(handle, "· Basic Fonts/Text/Pages");
+    setFont(handle, HELVETICA_REGULAR);
     addText(handle, "· Umlaut: äöü èàé");
     addText(handle, "· Lines/Tables");
     setFontColor(handle, 0.8, 0.2, 0.1);

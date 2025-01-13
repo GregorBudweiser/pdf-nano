@@ -10,7 +10,8 @@ export enum PageOrientation {
 
 export enum Font {
     ARIAL_REGULAR = 1,
-    ARIAL_BOLD
+    ARIAL_BOLD,
+    COURIER
 };
 
 export enum TextAlignment {

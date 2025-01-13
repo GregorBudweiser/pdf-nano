@@ -1,0 +1,261 @@
+%PDF-1.6
+1 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F1
+/BaseFont /Helvetica
+/Encoding /WinAnsiEncoding
+>>
+endobj
+2 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F2
+/BaseFont /Helvetica-Bold
+/Encoding /WinAnsiEncoding
+>>
+endobj
+3 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F3
+/BaseFont /Courier
+/Encoding /WinAnsiEncoding
+>>
+endobj
+5 0 obj
+<< /Length 1707       >>
+stream
+0.000 0.000 0.000 rg
+BT
+/F2 36 Tf
+54 756 Td
+(PDF-Nano) Tj
+ET
+0.000 0.000 0.000 RG
+1.500 w
+54 747 m
+541 747 l
+S
+0.000 0.000 0.000 rg
+BT
+/F1 12 Tf
+54 722 Td
+(PDF-Nano is a tiny pdf library for projects where storage space is limited. The goal is to ) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F1 12 Tf
+54 709 Td
+(support as many features as possible while staying below ~64kB.) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F2 18 Tf
+54 675 Td
+(Done:) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F3 12 Tf
+54 657 Td
+(\267 Basic Fonts/Text/Pages) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F1 12 Tf
+54 643 Td
+(\267 Umlaut: \344\366\374 \350\340\351) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F1 12 Tf
+54 630 Td
+(\267 Lines/Tables) Tj
+ET
+0.800 0.200 0.100 rg
+BT
+/F1 12 Tf
+54 617 Td
+(\267 Colors) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F1 12 Tf
+269 604 Td
+(\267 Centered) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F1 12 Tf
+477 591 Td
+(\267 Right Align) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F2 18 Tf
+54 557 Td
+(Todo:) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F1 12 Tf
+54 538 Td
+(\267 Justify Text) Tj
+ET
+0.000 0.000 0.000 RG
+0.900 0.900 0.900 rg
+54 520 486 -24 re
+f
+0.000 0.000 0.000 rg
+BT
+/F2 12 Tf
+58 504 Td
+(Table..) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F2 12 Tf
+158 504 Td
+(..header..) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F2 12 Tf
+258 504 Td
+(..with backgound color..) Tj
+ET
+0.500 w
+54 520 m
+540 520 l
+S
+0.000 0.000 0.000 RG
+1.000 1.000 1.000 rg
+54 496 486 -24 re
+f
+0.000 0.000 0.000 rg
+BT
+/F1 12 Tf
+58 480 Td
+(One..) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F1 12 Tf
+158 480 Td
+(Two..) Tj
+ET
+0.000 0.000 0.000 rg
+BT
+/F1 12 Tf
+258 480 Td
+(Three!) Tj
+ET
+0.500 w
+54 496 m
+540 496 l
+S
+0.500 w
+54 472 m
+540 472 l
+S
+0.500 w
+54 520 m
+54 472 l
+S
+0.500 w
+154 520 m
+154 472 l
+S
+0.500 w
+254 520 m
+254 472 l
+S
+0.500 w
+540 520 m
+540 472 l
+S
+endstream
+endobj
+6 0 obj
+<<
+/Type /Page
+/Parent 4 0 R
+/Resources <<
+ /Font <<
+  /F1 1 0 R
+  /F2 2 0 R
+  /F3 3 0 R
+ >>
+>>
+/MediaBox [0 0 595 842]
+/Contents 5 0 R
+>>
+endobj
+7 0 obj
+<< /Length 107        >>
+stream
+0.000 0.000 0.000 rg
+0.000 0.000 0.000 RG
+0.000 0.000 0.000 rg
+BT
+/F1 12 Tf
+54 778 Td
+(Second page!) Tj
+ET
+endstream
+endobj
+8 0 obj
+<<
+/Type /Page
+/Parent 4 0 R
+/Resources <<
+ /Font <<
+  /F1 1 0 R
+  /F2 2 0 R
+  /F3 3 0 R
+ >>
+>>
+/MediaBox [0 0 595 842]
+/Contents 7 0 R
+>>
+endobj
+4 0 obj
+<<
+/Type /Pages
+/Kids [
+   6 0 R
+   8 0 R
+]
+/Count 2
+>>
+endobj
+9 0 obj
+<<
+/Type /Catalog
+/Pages 4 0 R
+>>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000116 00000 n 
+0000000228 00000 n 
+0000002571 00000 n 
+0000000333 00000 n 
+0000002098 00000 n 
+0000002252 00000 n 
+0000002417 00000 n 
+0000002642 00000 n 
+trailer
+<<
+/Size 10
+/Root 9 0 R
+>>
+startxref
+2691
+%%EOF

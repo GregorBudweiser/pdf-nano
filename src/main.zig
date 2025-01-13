@@ -26,9 +26,10 @@ pub fn main() !void {
     try doc.addText("Done:");
 
     doc.advanceCursor(5);
-    doc.setFontById(PredefinedFonts.helveticaRegular);
+    doc.setFontById(PredefinedFonts.courierRegular);
     doc.setFontSize(12);
     try doc.addText("· Basic Fonts/Text/Pages");
+    doc.setFontById(PredefinedFonts.helveticaRegular);
     try doc.addText("· Umlaut: äöü èàé");
     try doc.addText("· Lines/Tables");
     doc.setFontColor(0.8, 0.2, 0.1);

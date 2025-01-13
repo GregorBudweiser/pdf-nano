@@ -14,7 +14,8 @@ enum PageOrientation {
 
 enum Font {
     HELVETICA_REGULAR = 1,
-    HELVETICA_BOLD
+    HELVETICA_BOLD,
+    COURIER
 };
 
 enum TextAlignment {
