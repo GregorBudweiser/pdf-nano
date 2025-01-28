@@ -55,7 +55,7 @@ pub fn main() !void {
     const cols = [_]u16{ 100, 100, 286 };
     doc.startTable(&cols);
 
-    const headers = [_][]const u8{ "Table..", "..header..", "..with backgound color.." };
+    const headers = [_][]const u8{ "Table..", "..header..", "..with background color.." };
     doc.setFontById(PredefinedFonts.helveticaBold);
     doc.setFillColor(0.9, 0.9, 0.9);
     try doc.writeRow(&headers);

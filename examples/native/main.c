@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
     
     advanceCursor(handle, 15);
     int16_t cols[3] = { 100, 100, 280 };
-    const char* texts[3] = { "Table..", "..header..", "..with backgound color.." };
+    const char* texts[3] = { "Table..", "..header..", "..with background color.." };
     setFont(handle, HELVETICA_BOLD);
     setFillColor(handle, 0.9, 0.9, 0.9);
     startTable(handle, cols, 3);
