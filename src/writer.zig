@@ -4,7 +4,15 @@ const font = @import("font.zig");
 const testing = std.testing;
 
 /// PDF float rgb values
-pub const Color = struct { r: f32, g: f32, b: f32 };
+pub const Color = struct {
+    pub const BLACK: Color = .{ .r = 0, .g = 0, .b = 0 };
+    pub const WHITE: Color = .{ .r = 1, .g = 1, .b = 1 };
+    pub const GREY: Color = .{ .r = 0.8, .g = 0.8, .b = 0.8 };
+
+    r: f32,
+    g: f32,
+    b: f32,
+};
 
 /// Low level pdf writer handling the pdf format specific stuff
 pub const PDFWriter = struct {
@@ -67,10 +75,9 @@ pub const PDFWriter = struct {
         _ = try self.createIRefID(); // use up objectId 0 and ignore it.
         try self.buffer.appendSlice("%PDF-1.6\n"); // write header
 
-        const fonts = [_][]const u8{ "Helvetica", "Helvetica-Bold", "Courier" };
-        for (fonts, 0..) |f, i| {
+        for (font.predefinedFonts, 0..) |f, i| {
             self.fonts[i] = try self.startObject();
-            try self.appendFormatted("<<\n/Type /Font\n/Subtype /Type1\n/Name /F{d}\n/BaseFont /{s}\n/Encoding /WinAnsiEncoding\n>>\n", .{ i + 1, f });
+            try self.appendFormatted("<<\n/Type /Font\n/Subtype /Type1\n/Name /F{d}\n/BaseFont /{s}\n/Encoding /WinAnsiEncoding\n>>\n", .{ f.id, f.name });
             try self.endObject();
         }
 

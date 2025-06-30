@@ -2,11 +2,6 @@
 #include <stdio.h>
 
 int main(int argc, char** argv) {
-    if (argc <= 1) {
-        printf("usage: main.exe <out_filename>\n");
-        return 0;
-    }
-
     encoder_handle handle = createEncoder(A4, PORTRAIT);
     setFont(handle, HELVETICA_BOLD);
     setFontSize(handle, 36);
@@ -52,23 +47,23 @@ int main(int argc, char** argv) {
     addText(handle, "· Justify Text");
     
     advanceCursor(handle, 15);
-    int16_t cols[3] = { 100, 100, 280 };
-    const char* texts[3] = { "Table..", "..header..", "..with background color.." };
-    setFont(handle, HELVETICA_BOLD);
-    setFillColor(handle, 0.9, 0.9, 0.9);
+    int16_t cols[3] = { 100, 100, 286 };
+    const char* headers[3] = { "Repeating..", "..Table..", "..Header.." };
+    const char* texts[3] = { "One..", "Two..", "Three!" };
+
     startTable(handle, cols, 3);
-    writeRow(handle, texts, 3);
-    
-    const char* texts2[3] = { "One..", "Two..", "Three!" };
-    setFont(handle, HELVETICA_REGULAR);
-    setFillColor(handle, 1, 1, 1);
-    writeRow(handle, texts2, 3);
+    setTableHeaders(handle, headers, 3, 1);
+    for (size_t i = 0; i < 20; i++) {
+        float value = ((i & 1) == 0) ? 1 : 0.95;
+        setFillColor(handle, value, value, value);
+        writeRow(handle, texts, 3);
+    }
     finishTable(handle);
 
     breakPage(handle);
-    addText(handle, "Second page!");
+    addText(handle, "New page!");
 
-    saveAs(handle, argv[1]);
+    saveAs(handle, "hello_from_c.pdf");
 
     freeEncoder(handle);
     return 0;

@@ -11,10 +11,11 @@ To keep the code/binary small only a minimal set of features have been and will 
 - Tables (fixed layout)
 - Colors (font, storke, fill/table background)
 - Alignment (left, center, right)
-
-On the todo list:
-- Text justify
 - Optionally repeat table header on new page
+
+Nice to have at some point:
+- Unify/improve handling of text/table styles
+- Text justify
 
 Not on the todo list (due to code size):
 - TrueType fonts (if you need a small library you probably don't have space for fonts anyway)
@@ -29,7 +30,8 @@ PDF-Nano is written in Zig, so you will need the Zig compiler. Then simply compi
 ### Build compatibility
 | PDF-Nano     | Zig                        |
 |--------------|----------------------------|
-| **v0.5.0**   | **v0.13.0**                |
+| **v0.6.0**   | **v0.14.x**                |
+| v0.5.0       | v0.13.0                    |
 | v0.4.0       | v0.13.0                    |
 | v0.3.0       | v0.12.0-dev.3291+17bad9f88 |
 | v0.2.0       | v0.11.0                    |

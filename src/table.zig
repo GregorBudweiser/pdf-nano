@@ -3,6 +3,11 @@ const Color = @import("writer.zig").Color;
 const std = @import("std");
 const PDFDocument = @import("document.zig").PDFDocument;
 const Layouter = @import("layouter.zig").Layouter;
+const Style = @import("document.zig").Style;
+const TextAlignment = @import("layouter.zig").TextAlignment;
+const PredefinedFonts = @import("font.zig").PredefinedFonts;
+
+const MAX_COL: u8 = 16;
 
 /// Helper class to render a table
 pub const Table = struct {
@@ -13,7 +18,7 @@ pub const Table = struct {
         remainingText: []const u8 = undefined,
     };
 
-    columns: [16]Cell = [1]Cell{Cell{}} ** 16,
+    columns: [MAX_COL]Cell = [1]Cell{Cell{}} ** MAX_COL,
     numCols: u8 = undefined,
     currentColumn: u8 = undefined,
     currentRowY: u16 = undefined,
@@ -22,22 +27,98 @@ pub const Table = struct {
     width: u16 = undefined,
     padding: u16 = undefined,
     lineWidth: f32 = undefined,
+    headers: std.ArrayList([]const u8) = undefined,
+    repeat: bool = undefined,
+    headerStyle: Style = undefined, // TODO default init
 
-    /// @param columnWidths array of column widths. Max 16 elements supported
-    pub fn init(columnWidths: []const u16, x: u16, y: u16) Table {
-        // TODO: handle @intCast
-        var table = Table{ .x = x, .y = y, .currentRowY = y, .currentColumn = 0, .numCols = @intCast(columnWidths.len), .lineWidth = 0.5, .padding = 4 };
+    pub fn init(allocator: std.mem.Allocator) Table {
+        return Table{
+            .headers = std.ArrayList([]const u8).init(allocator),
+            .repeat = false,
+            .headerStyle = Style{
+                .alignment = TextAlignment.LEFT,
+                .font = PredefinedFonts.helveticaBold,
+                .fontSize = 12,
+                .fontColor = Color.BLACK,
+                .strokeColor = Color.BLACK,
+                .fillColor = Color.GREY,
+            },
+        };
+    }
+
+    pub fn deinit(self: *Table) void {
+        self.headers.deinit();
+    }
+
+    pub fn setHeaderStyle(self: *Table, style: Style) void {
+        self.headerStyle = style;
+    }
+
+    pub fn setHeaders(self: *Table, headers: []const []const u8, repeatPerPage: bool) !void {
+        self.repeat = repeatPerPage;
+        self.headers.clearAndFree();
+        for (headers) |header| {
+            const copy = try self.headers.allocator.dupe(u8, header);
+            try self.headers.append(copy);
+        }
+    }
+
+    pub fn hasHeaders(self: *const Table) bool {
+        return self.headers.items.len > 0;
+    }
+
+    /// @param columnWidths array of column widths. Max MAX_COL elements supported
+    pub fn startTable(self: *Table, columnWidths: []const u16, x: u16, y: u16) void {
+        self.x = x;
+        self.y = y;
+        self.currentRowY = y;
+        self.currentColumn = 0;
+        self.numCols = @intCast(@min(MAX_COL, columnWidths.len));
+        self.lineWidth = 0.5;
+        self.padding = 4;
+
         var currentX = x;
-        for (table.getCells(), columnWidths) |*cell, width| {
+        for (self.getCells(), columnWidths) |*cell, width| {
             cell.width = width;
             cell.x = currentX;
             currentX += width;
         }
-        table.width = currentX - x;
-        return table;
+        self.width = currentX - x;
+    }
+
+    pub fn writeHeaderRow(self: *Table, doc: *PDFDocument) !void {
+        if (!try self.canFitNextRow(doc)) {
+            return;
+        }
+
+        try doc.writer.setStrokeColor(self.headerStyle.strokeColor);
+        const y = self.currentRowY;
+        const marker = doc.writer.createMarker();
+        for (self.getCells(), self.headers.items) |*cell, headerText| {
+            var headerCell = cell.*;
+            headerCell.remainingText = headerText;
+            try self.writeCellWithStyle(doc, &headerCell, &doc.writer, self.headerStyle);
+            headerCell.remainingText = cell.remainingText;
+            cell.* = headerCell;
+        }
+        try self.finishRow(&doc.writer);
+
+        // Background needs to be rendered/inserted before actual cells
+        // but we only know cell height after we rendered them..
+        var stringBuffer = [_]u8{0} ** 128;
+        var alloc = std.heap.FixedBufferAllocator.init(&stringBuffer);
+        var writer = PDFWriter.init(alloc.allocator());
+        try writer.setColor(self.headerStyle.fillColor);
+        try writer.putRect(self.x, y, self.width, -@as(i32, y - self.currentRowY));
+
+        try doc.writer.insertAtMarker(marker, writer.buffer.items);
     }
 
     pub fn writeRow(self: *Table, doc: *PDFDocument) !void {
+        if (!try self.canFitNextRow(doc)) {
+            return;
+        }
+
         const y = self.currentRowY;
         const marker = doc.writer.createMarker();
         for (self.getCells()) |*cell| {
@@ -45,11 +126,12 @@ pub const Table = struct {
         }
         try self.finishRow(&doc.writer);
 
-        // Rendered/inserted before actuall cells
+        // Background needs to be rendered/inserted before actual cells
+        // but we only know cell height after we rendered them..
         var stringBuffer = [_]u8{0} ** 128;
         var alloc = std.heap.FixedBufferAllocator.init(&stringBuffer);
         var writer = PDFWriter.init(alloc.allocator());
-        try writer.setColor(doc.cursor.fillColor);
+        try writer.setColor(doc.cursor.style.fillColor);
         try writer.putRect(self.x, y, self.width, -@as(i32, y - self.currentRowY));
 
         try doc.writer.insertAtMarker(marker, writer.buffer.items);
@@ -91,12 +173,22 @@ pub const Table = struct {
         return self.currentRowY;
     }
 
+    fn canFitNextRow(self: *const Table, doc: *PDFDocument) !bool {
+        const layouter = try Layouter.init("", self.padding, 100, doc.cursor.style);
+        const y: i32 = self.currentRowY - layouter.getLineHeight();
+        return y + layouter.getLineGap() >= doc.pageProperties.getContentBottom();
+    }
+
     fn writeCell(self: *Table, doc: *PDFDocument, cell: *Cell, writer: *PDFWriter) !void {
+        try self.writeCellWithStyle(doc, cell, writer, doc.cursor.style);
+    }
+
+    fn writeCellWithStyle(self: *Table, doc: *PDFDocument, cell: *Cell, writer: *PDFWriter, style: Style) !void {
         var remainingText = cell.remainingText;
-        var layouter = try Layouter.init(remainingText, cell.x + self.padding, cell.width - 2 * self.padding, doc.cursor.fontSize, doc.cursor.fontId, doc.cursor.alignment);
+        var layouter = try Layouter.init(remainingText, cell.x + self.padding, cell.width - 2 * self.padding, style);
         var y: i32 = self.currentRowY;
         while (layouter.nextLine()) |token| {
-            // advance cursor by this new line, breaking loop if we run out of text
+            // advance cursor by this new line, breaking loop if we run out of space
             y -= layouter.getLineHeight();
             if (y + layouter.getLineGap() < doc.pageProperties.getContentBottom()) {
                 cell.remainingText = remainingText;
@@ -104,8 +196,7 @@ pub const Table = struct {
                 return;
             }
 
-            try writer.setColor(doc.cursor.fontColor);
-            //try writer.putText(token, doc.cursor.fontId, layouter.fontSize, self.getCurrentCell().x + self.padding, y - self.padding + 1);
+            try writer.setColor(style.fontColor);
             try layouter.layoutLine(token, y - self.padding + 1, writer);
             remainingText = layouter.remainingText();
             cell.height = @intCast(self.currentRowY - y + 2 * self.padding + layouter.getLineHeight() - layouter.getBaseline());

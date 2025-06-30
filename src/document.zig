@@ -8,7 +8,7 @@ const TextAlignment = @import("layouter.zig").TextAlignment;
 const Table = @import("table.zig").Table;
 const PageProperties = @import("page_properties.zig").PageProperties;
 
-pub const PDF_NANO_VERSION: [*:0]const u8 = "0.5.0";
+pub const PDF_NANO_VERSION: [:0]const u8 = "0.6.0";
 
 pub const PageOrientation = enum(c_uint) { PORTRAIT, LANDSCAPE };
 pub const PageFormat = enum(c_uint) { LETTER, A4 };
@@ -19,16 +19,21 @@ const formats = [_][2]u16{
     [2]u16{ 595, 842 },
 };
 
-/// Virtual cursor inside document
-const Cursor = struct {
-    x: u16,
-    y: u16,
+// Text style and related stuff
+pub const Style = struct {
     fontSize: u16,
-    fontId: u16,
+    font: *const Font,
     fontColor: Color, // Text + Fill
     strokeColor: Color, // Lines / Strokes
     fillColor: Color, // Brackground (e.g. table cell bg)
     alignment: TextAlignment,
+};
+
+/// Virtual cursor inside document
+const Cursor = struct {
+    x: u16,
+    y: u16,
+    style: Style,
 };
 
 /// High level document struct for creating a PDF document
@@ -43,11 +48,13 @@ pub const PDFDocument = struct {
         return PDFDocument{
             .writer = PDFWriter.init(allocator),
             .pageProperties = PageProperties{},
+            .table = Table.init(allocator),
         };
     }
 
     pub fn deinit(self: *PDFDocument) void {
         self.writer.deinit();
+        self.table.deinit();
     }
 
     /// Calling render() "finishes" the document.
@@ -61,14 +68,15 @@ pub const PDFDocument = struct {
         self.pageProperties.width = formats[@intFromEnum(format)][0 + @intFromEnum(orientation)];
         self.pageProperties.height = formats[@intFromEnum(format)][1 - @intFromEnum(orientation)];
         try self.writer.startDocument(self.pageProperties.width, self.pageProperties.height);
-        self.resetCursor();
+        self.resetCursorPos();
+        self.setDefaultStyle();
     }
 
     pub fn breakPage(self: *PDFDocument) !void {
         try self.writer.newPage(self.pageProperties.width, self.pageProperties.height);
         self.cursor.y = self.pageProperties.getContentTop();
-        try self.writer.setColor(self.cursor.fontColor);
-        try self.writer.setStrokeColor(self.cursor.strokeColor);
+        try self.writer.setColor(self.cursor.style.fontColor);
+        try self.writer.setStrokeColor(self.cursor.style.strokeColor);
     }
 
     pub fn advanceCursor(self: *PDFDocument, y: u16) void {
@@ -76,32 +84,32 @@ pub const PDFDocument = struct {
     }
 
     pub fn setFontSize(self: *PDFDocument, fontSize: u8) void {
-        self.cursor.fontSize = fontSize;
+        self.cursor.style.fontSize = fontSize;
     }
 
-    pub fn setFontById(self: *PDFDocument, fontId: u8) void {
-        self.cursor.fontId = fontId;
+    pub fn setFont(self: *PDFDocument, font: *const Font) void {
+        self.cursor.style.font = font;
     }
 
     pub fn setFontColor(self: *PDFDocument, r: f32, g: f32, b: f32) void {
-        self.cursor.fontColor = Color{ .r = r, .g = g, .b = b };
+        self.cursor.style.fontColor = Color{ .r = r, .g = g, .b = b };
     }
 
     pub fn setStrokeColor(self: *PDFDocument, r: f32, g: f32, b: f32) void {
-        self.cursor.strokeColor = Color{ .r = r, .g = g, .b = b };
+        self.cursor.style.strokeColor = Color{ .r = r, .g = g, .b = b };
     }
 
     pub fn setFillColor(self: *PDFDocument, r: f32, g: f32, b: f32) void {
-        self.cursor.fillColor = Color{ .r = r, .g = g, .b = b };
+        self.cursor.style.fillColor = Color{ .r = r, .g = g, .b = b };
     }
 
     pub fn hr(self: *PDFDocument, thickness: f32) !void {
-        try self.writer.setStrokeColor(self.cursor.strokeColor);
+        try self.writer.setStrokeColor(self.cursor.style.strokeColor);
         try self.writer.putLine(thickness, self.pageProperties.getContentLeft(), self.cursor.y, self.pageProperties.getContentRight(), self.cursor.y);
     }
 
     pub fn setTextAlignment(self: *PDFDocument, alignment: TextAlignment) void {
-        self.cursor.alignment = alignment;
+        self.cursor.style.alignment = alignment;
     }
 
     pub fn addText(self: *PDFDocument, text: []const u8) !void {
@@ -109,21 +117,19 @@ pub const PDFDocument = struct {
             text,
             self.pageProperties.getContentLeft(),
             self.pageProperties.getContentWidth(),
-            self.cursor.fontSize,
-            self.cursor.fontId,
-            self.cursor.alignment,
+            self.cursor.style,
         );
         var y: i32 = self.cursor.y;
         while (layouter.nextLine()) |line| {
             // advance cursor by this new line, creating new page if necessary
             y -= layouter.getLineHeight();
             if (y + layouter.getLineGap() < self.pageProperties.getContentBottom()) {
-                self.resetCursor();
+                self.resetCursorPos();
                 try self.writer.newPage(self.pageProperties.width, self.pageProperties.height);
                 y = self.pageProperties.getContentTop() - layouter.getLineHeight();
             }
 
-            try self.writer.setColor(self.cursor.fontColor);
+            try self.writer.setColor(self.cursor.style.fontColor);
             try layouter.layoutLine(line, y + layouter.getLineHeight() - layouter.getBaseline(), &self.writer);
             //try self.writer.putText(line, self.cursor.fontId, layouter.fontSize, self.pageProperties.documentBorder, y + layouter.getLineHeight() - layouter.getBaseline());
         }
@@ -131,7 +137,7 @@ pub const PDFDocument = struct {
     }
 
     pub fn writeRow(self: *PDFDocument, strings: []const []const u8) !void {
-        try self.writer.setStrokeColor(self.cursor.strokeColor);
+        try self.writer.setStrokeColor(self.cursor.style.strokeColor);
         for (self.table.getCells(), strings) |*cell, string| {
             cell.remainingText = string;
         }
@@ -144,12 +150,27 @@ pub const PDFDocument = struct {
             self.table.y = self.pageProperties.getContentTop();
             self.table.currentRowY = self.table.y;
 
+            if (self.table.hasHeaders() and self.table.repeat) {
+                try self.table.writeHeaderRow(self);
+            }
             try self.table.writeRow(self);
         }
     }
 
     pub fn startTable(self: *PDFDocument, columnWidths: []const u16) void {
-        self.table = Table.init(columnWidths, self.pageProperties.getContentLeft(), self.cursor.y);
+        self.table.startTable(columnWidths, self.pageProperties.getContentLeft(), self.cursor.y);
+    }
+
+    /// Can only be called after startTable() and before first writeRow() for a given table
+    /// Sets and immediately renders table headers
+    /// Multiple calls to setTableHeaders() per table is not supported
+    pub fn setTableHeaders(self: *PDFDocument, headers: []const []const u8, repeatPerPage: bool) !void {
+        try self.table.setHeaders(headers, repeatPerPage);
+        try self.table.writeHeaderRow(self);
+    }
+
+    pub fn setTableHeaderStyle(self: *PDFDocument, style: Style) void {
+        self.table.setHeaderStyle(style);
     }
 
     pub inline fn finishTable(self: *PDFDocument) !void {
@@ -166,14 +187,20 @@ pub const PDFDocument = struct {
         _ = try buf_writer.flush();
     }
 
-    fn resetCursor(self: *PDFDocument) void {
+    fn resetCursorPos(self: *PDFDocument) void {
         self.cursor.x = self.pageProperties.documentBorder;
         self.cursor.y = self.pageProperties.getContentTop();
-        self.cursor.fontSize = 12;
-        self.cursor.fontId = PredefinedFonts.helveticaRegular;
-        self.cursor.fontColor = Color{ .r = 0, .g = 0, .b = 0 };
-        self.cursor.strokeColor = Color{ .r = 0, .g = 0, .b = 0 };
-        self.cursor.fillColor = Color{ .r = 1, .g = 1, .b = 1 };
+    }
+
+    fn setDefaultStyle(self: *PDFDocument) void {
+        self.cursor.style = .{
+            .fontSize = 12,
+            .font = PredefinedFonts.helveticaRegular,
+            .fontColor = Color.BLACK,
+            .strokeColor = Color.BLACK,
+            .fillColor = Color.WHITE,
+            .alignment = TextAlignment.LEFT,
+        };
     }
 };
 

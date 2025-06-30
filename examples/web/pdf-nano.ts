@@ -83,16 +83,29 @@ export class PDFDocument {
         this.free(ptr);
     }
 
-    addTableRow(columnWidths: string[]) {
-        const ptr = this.alloc(4*columnWidths.length);
-        columnWidths.forEach((v, i) => {
+    setTableHeader(headers: string[], repeatHeaders: boolean) {
+        const ptr = this.alloc(4*headers.length);
+        headers.forEach((v, i) => {
             const str = this.allocAndEncodeString(v);
             this.view.setUint32(ptr + 4*i, str, true)
         });
-        
-        this.callH('writeRow', ptr, columnWidths.length);
-        
-        columnWidths.forEach((v, i) => this.free(this.view.getUint32(ptr + 4*i, true)));
+
+        this.callH('setTableHeaders', ptr, headers.length, repeatHeaders);
+
+        headers.forEach((v, i) => this.free(this.view.getUint32(ptr + 4*i, true)));
+        this.free(ptr);
+    }
+
+    addTableRow(columns: string[]) {
+        const ptr = this.alloc(4*columns.length);
+        columns.forEach((v, i) => {
+            const str = this.allocAndEncodeString(v);
+            this.view.setUint32(ptr + 4*i, str, true)
+        });
+
+        this.callH('writeRow', ptr, columns.length);
+
+        columns.forEach((v, i) => this.free(this.view.getUint32(ptr + 4*i, true)));
         this.free(ptr);
     }
 

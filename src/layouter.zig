@@ -3,6 +3,8 @@ const font = @import("font.zig");
 const unicode = @import("std").unicode;
 const PageProperties = @import("page_properties.zig").PageProperties;
 const PDFWriter = @import("writer.zig").PDFWriter;
+const Style = @import("document.zig").Style;
+const Color = @import("writer.zig").Color;
 
 pub const TextAlignment = enum(c_uint) { LEFT, CENTERED, RIGHT };
 
@@ -14,9 +16,7 @@ pub const Layouter = struct {
     x: u16,
     /// in font specific unit (unit per em)
     width: usize = undefined,
-    fontSize: u16 = 12,
-    font: font.Font,
-    alignment: TextAlignment,
+    style: Style,
 
     const Limiter = enum {
         whitespace,
@@ -32,34 +32,31 @@ pub const Layouter = struct {
     };
 
     /// @param: columnWidth in points (1/72th inch)
-    pub fn init(text: []const u8, columnStart: u16, columnWidth: u16, fontSize: u16, fontId: u16, alignment: TextAlignment) !Layouter {
-        const usedFont = font.predefinedFonts[fontId - 1];
-        var layouter = Layouter{
+    pub fn init(text: []const u8, columnStart: u16, columnWidth: u16, style: Style) !Layouter {
+        const iter = (try unicode.Utf8View.init(text)).iterator();
+        return Layouter{
             .pos = 0,
             .text = text,
             .x = columnStart,
-            .width = columnWidth * usedFont.unitsPerEm,
-            .fontSize = fontSize,
-            .font = usedFont,
-            .alignment = alignment,
+            .width = columnWidth * style.font.unitsPerEm,
+            .style = style,
+            .utf8Iter = iter,
         };
-        layouter.utf8Iter = (try unicode.Utf8View.init(text)).iterator();
-        return layouter;
     }
 
     pub fn layoutLine(self: *Layouter, line: []const u8, y: i32, writer: *PDFWriter) !void {
-        switch (self.alignment) {
+        switch (self.style.alignment) {
             .RIGHT => {
-                const x = @as(usize, @intCast(self.x)) + self.width / self.font.unitsPerEm - try self.getLineLength(line) / self.font.unitsPerEm;
-                try writer.putText(line, self.font.id, self.fontSize, @intCast(x), y);
+                const x = @as(usize, @intCast(self.x)) + self.width / self.style.font.unitsPerEm - try self.getLineLength(line) / self.style.font.unitsPerEm;
+                try writer.putText(line, self.style.font.id, self.style.fontSize, @intCast(x), y);
             },
             .CENTERED => {
-                const x = @as(usize, @intCast(self.x)) + (self.width / self.font.unitsPerEm - try self.getLineLength(line) / self.font.unitsPerEm) / 2;
-                try writer.putText(line, self.font.id, self.fontSize, @intCast(x), y);
+                const x = @as(usize, @intCast(self.x)) + (self.width / self.style.font.unitsPerEm - try self.getLineLength(line) / self.style.font.unitsPerEm) / 2;
+                try writer.putText(line, self.style.font.id, self.style.fontSize, @intCast(x), y);
             },
             // default is left aligned
             else => {
-                try writer.putText(line, self.font.id, self.fontSize, self.x, y);
+                try writer.putText(line, self.style.font.id, self.style.fontSize, self.x, y);
             },
         }
     }
@@ -72,9 +69,9 @@ pub const Layouter = struct {
         var whiteSpaceAtEnd: usize = 0;
         var iter = (try unicode.Utf8View.init(line)).iterator();
         while (iter.nextCodepoint()) |char| {
-            currentWidth += self.font.glyphAdvances[char] * self.fontSize;
+            currentWidth += self.style.font.glyphAdvances[char] * self.style.fontSize;
             if (char < 0x100 and std.ascii.isWhitespace(@intCast(char))) {
-                whiteSpaceAtEnd += self.font.glyphAdvances[char] * self.fontSize;
+                whiteSpaceAtEnd += self.style.font.glyphAdvances[char] * self.style.fontSize;
             } else {
                 whiteSpaceAtEnd = 0;
             }
@@ -83,16 +80,16 @@ pub const Layouter = struct {
     }
 
     pub fn getLineHeight(self: *const Layouter) u16 {
-        return self.font.getLineHeight(self.fontSize);
+        return self.style.font.getLineHeight(self.style.fontSize);
     }
 
     // baseline to highest point
     pub fn getBaseline(self: *const Layouter) u16 {
-        return self.font.getBaseline(self.fontSize);
+        return self.style.font.getBaseline(self.style.fontSize);
     }
 
     pub fn getLineGap(self: *const Layouter) u16 {
-        return self.font.getLineGap(self.fontSize);
+        return self.style.font.getLineGap(self.style.fontSize);
     }
 
     pub fn remainingText(self: *Layouter) []const u8 {
@@ -141,10 +138,10 @@ pub const Layouter = struct {
         self.utf8Iter.i = pos;
 
         while (self.utf8Iter.nextCodepoint()) |char| {
-            if (char < self.font.glyphAdvances.len) {
-                currentWidth += self.font.glyphAdvances[char] * self.fontSize;
+            if (char < self.style.font.glyphAdvances.len) {
+                currentWidth += self.style.font.glyphAdvances[char] * self.style.fontSize;
             } else {
-                currentWidth += self.font.max * self.fontSize;
+                currentWidth += self.style.font.max * self.style.fontSize;
             }
             if (char == std.ascii.control_code.lf) {
                 word.limiter = Limiter.linefeed;
@@ -170,7 +167,7 @@ pub const Layouter = struct {
         var split: usize = 0;
         var lastPos: usize = pos; // position before current character/codepoint
         while (self.utf8Iter.nextCodepoint()) |char| {
-            currentWidth += self.font.glyphAdvances[char] * self.fontSize;
+            currentWidth += self.style.font.glyphAdvances[char] * self.style.fontSize;
 
             // natural split point
             if (char == '_' or char == '.' or char == '-') {
@@ -192,18 +189,29 @@ pub const Layouter = struct {
     }
 };
 
+fn getTestStyle() Style {
+    return Style{
+        .font = font.PredefinedFonts.helveticaRegular,
+        .fontSize = 12,
+        .fontColor = Color.BLACK,
+        .strokeColor = Color.BLACK,
+        .fillColor = Color.WHITE,
+        .alignment = TextAlignment.LEFT,
+    };
+}
+
 test "chop overflowing word at natrual breaks" {
-    var parser = try Layouter.init("my_extremely_long_file_name.zip", 0, 72, 12, font.PredefinedFonts.helveticaRegular, TextAlignment.LEFT);
+    var parser = try Layouter.init("my_extremely_long_file_name.zip", 0, 72, getTestStyle());
     try std.testing.expectEqualSlices(u8, "my_", parser.nextLine().?);
 }
 
 test "chop overflowing word" {
-    var parser = try Layouter.init("abcdefghijklmnopqrstuvwxyz", 0, 72, 12, font.PredefinedFonts.helveticaRegular, TextAlignment.LEFT);
+    var parser = try Layouter.init("abcdefghijklmnopqrstuvwxyz", 0, 72, getTestStyle());
     try std.testing.expectEqualSlices(u8, "abcdefghijkl", parser.nextLine().?);
 }
 
 test "split text into rows" {
-    var parser = try Layouter.init("a a a a a a a a a a a a a a a a a a a a a", 0, 72, 12, font.PredefinedFonts.helveticaRegular, TextAlignment.LEFT);
+    var parser = try Layouter.init("a a a a a a a a a a a a a a a a a a a a a", 0, 72, getTestStyle());
     try std.testing.expectEqualSlices(u8, "a a a a a a a ", parser.nextLine().?);
     try std.testing.expectEqualSlices(u8, "a a a a a a a ", parser.nextLine().?);
     try std.testing.expectEqualSlices(u8, "a a a a a a a", parser.nextLine().?);
@@ -211,6 +219,6 @@ test "split text into rows" {
 }
 
 test "handle umlaut" {
-    var parser = try Layouter.init("ä ö ü", 0, 72, 12, font.PredefinedFonts.helveticaRegular, TextAlignment.LEFT);
+    var parser = try Layouter.init("ä ö ü", 0, 72, getTestStyle());
     try std.testing.expectEqualSlices(u8, "ä ö ü", parser.nextLine().?);
 }

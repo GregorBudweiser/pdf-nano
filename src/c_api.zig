@@ -1,6 +1,7 @@
 const std = @import("std");
 const PDFDocument = @import("./document.zig").PDFDocument;
 const PDFNano = @import("./document.zig");
+const PredefinedFonts = @import("font.zig").PredefinedFonts;
 const arch = @import("builtin").target.cpu.arch;
 
 export fn createEncoder(format: u32, orientation: u32) usize {
@@ -29,7 +30,17 @@ export fn setFontSize(doc: *PDFDocument, size: u8) void {
 }
 
 export fn setFont(doc: *PDFDocument, fontId: u8) void {
-    doc.setFontById(fontId);
+    switch (fontId) {
+        2 => {
+            doc.setFont(PredefinedFonts.helveticaBold);
+        },
+        3 => {
+            doc.setFont(PredefinedFonts.courierRegular);
+        },
+        else => {
+            doc.setFont(PredefinedFonts.helveticaRegular);
+        },
+    }
 }
 
 export fn advanceCursor(doc: *PDFDocument, y: u16) void {
@@ -93,6 +104,20 @@ export fn getVersion() [*:0]const u8 {
 
 export fn breakPage(doc: *PDFDocument) i32 {
     if (doc.breakPage()) {
+        return 0;
+    } else |_| {
+        return -1;
+    }
+}
+
+export fn setTableHeaders(doc: *PDFDocument, headers: *[16]usize, numColumns: u8, repeatHeader: bool) i32 {
+    var cols: [16][]u8 = [1][]u8{""} ** 16;
+    var i: u8 = 0;
+    while (i < numColumns) : (i += 1) {
+        cols[i] = std.mem.span(@as([*c]u8, @ptrFromInt(headers[i])));
+    }
+
+    if (doc.setTableHeaders(cols[0..numColumns], repeatHeader)) {
         return 0;
     } else |_| {
         return -1;
