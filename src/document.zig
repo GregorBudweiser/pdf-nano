@@ -8,7 +8,7 @@ const TextAlignment = @import("layouter.zig").TextAlignment;
 const Table = @import("table.zig").Table;
 const PageProperties = @import("page_properties.zig").PageProperties;
 
-pub const PDF_NANO_VERSION: [:0]const u8 = "0.6.0";
+pub const PDF_NANO_VERSION: [:0]const u8 = "0.7.0";
 
 pub const PageOrientation = enum(c_uint) { PORTRAIT, LANDSCAPE };
 pub const PageFormat = enum(c_uint) { LETTER, A4 };
@@ -182,9 +182,10 @@ pub const PDFDocument = struct {
     pub fn save(doc: *PDFDocument, filename: []const u8) !void {
         const out_file = try std.fs.cwd().createFile(filename, .{});
         defer out_file.close();
-        var buf_writer = std.io.bufferedWriter(out_file.writer());
-        _ = try buf_writer.write(try doc.render());
-        _ = try buf_writer.flush();
+        var buffer: [1024]u8 = undefined;
+        var buf_writer = out_file.writer(&buffer);
+        _ = try buf_writer.interface.write(try doc.render());
+        _ = try buf_writer.interface.flush();
     }
 
     fn resetCursorPos(self: *PDFDocument) void {

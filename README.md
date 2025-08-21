@@ -30,7 +30,8 @@ PDF-Nano is written in Zig, so you will need the Zig compiler. Then simply compi
 ### Build compatibility
 | PDF-Nano     | Zig                        |
 |--------------|----------------------------|
-| **v0.6.0**   | **v0.14.x**                |
+| **v0.7.0**   | **v0.15.x**                |
+| v0.6.0       | v0.14.x                    |
 | v0.5.0       | v0.13.0                    |
 | v0.4.0       | v0.13.0                    |
 | v0.3.0       | v0.12.0-dev.3291+17bad9f88 |

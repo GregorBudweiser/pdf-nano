@@ -27,13 +27,13 @@ pub const Table = struct {
     width: u16 = undefined,
     padding: u16 = undefined,
     lineWidth: f32 = undefined,
-    headers: std.ArrayList([]const u8) = undefined,
+    headers: std.array_list.Managed([]const u8) = undefined,
     repeat: bool = undefined,
     headerStyle: Style = undefined, // TODO default init
 
     pub fn init(allocator: std.mem.Allocator) Table {
         return Table{
-            .headers = std.ArrayList([]const u8).init(allocator),
+            .headers = std.array_list.Managed([]const u8).init(allocator),
             .repeat = false,
             .headerStyle = Style{
                 .alignment = TextAlignment.LEFT,

@@ -17,13 +17,13 @@ pub const Color = struct {
 /// Low level pdf writer handling the pdf format specific stuff
 pub const PDFWriter = struct {
     /// pdf output buffer
-    buffer: std.ArrayList(u8),
+    buffer: std.array_list.Managed(u8),
 
     /// byte offsets of the indirect references
-    iRefOffsets: std.ArrayList(usize),
+    iRefOffsets: std.array_list.Managed(usize),
 
     /// list of all pages written
-    pageIds: std.ArrayList(usize),
+    pageIds: std.array_list.Managed(usize),
 
     /// page tree object
     pageTreeId: usize = undefined,
@@ -60,9 +60,9 @@ pub const PDFWriter = struct {
 
     pub fn init(allocator: std.mem.Allocator) PDFWriter {
         return PDFWriter{
-            .buffer = std.ArrayList(u8).init(allocator),
-            .iRefOffsets = std.ArrayList(usize).init(allocator),
-            .pageIds = std.ArrayList(usize).init(allocator),
+            .buffer = std.array_list.Managed(u8).init(allocator),
+            .iRefOffsets = std.array_list.Managed(usize).init(allocator),
+            .pageIds = std.array_list.Managed(usize).init(allocator),
         };
     }
 
