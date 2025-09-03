@@ -7,11 +7,9 @@ The goal of PDF-Nano is to have a lightweight PDF-library usable from Zig, C and
 The main feature is PDF-Nano's small size. Compiled to wasm, it weighs **less than 64kb**, making it suitable for embedded devices.
 To keep the code/binary small only a minimal set of features have been and will be added. Currently the following is supported:
 - Text (Latin-1 charset support only)
-- Lines
-- Tables (fixed layout)
-- Colors (font, storke, fill/table background)
-- Alignment (left, center, right)
-- Optionally repeat table header on new page
+- Basic options for fonts, colors and alignment
+- Lines and tables (fixed layout, optionally repeat table header on new page)
+- Page numbers in footer
 
 Nice to have at some point:
 - Unify/improve handling of text/table styles
@@ -30,7 +28,8 @@ PDF-Nano is written in Zig, so you will need the Zig compiler. Then simply compi
 ### Build compatibility
 | PDF-Nano     | Zig                        |
 |--------------|----------------------------|
-| **v0.7.0**   | **v0.15.x**                |
+| **v0.8.0**   | **v0.15.x**                |
+| v0.7.0       | v0.15.x                    |
 | v0.6.0       | v0.14.x                    |
 | v0.5.0       | v0.13.0                    |
 | v0.4.0       | v0.13.0                    |

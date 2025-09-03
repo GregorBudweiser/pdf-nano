@@ -176,7 +176,7 @@ pub const Table = struct {
     fn canFitNextRow(self: *const Table, doc: *PDFDocument) !bool {
         const layouter = try Layouter.init("", self.padding, 100, doc.cursor.style);
         const y: i32 = self.currentRowY - layouter.getLineHeight();
-        return y + layouter.getLineGap() >= doc.pageProperties.getContentBottom();
+        return y + layouter.getLineGap() - 2 * self.padding >= doc.pageProperties.getContentBottom();
     }
 
     fn writeCell(self: *Table, doc: *PDFDocument, cell: *Cell, writer: *PDFWriter) !void {

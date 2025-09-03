@@ -147,6 +147,13 @@ pub const PDFWriter = struct {
         try self.buffer.insertSlice(marker, data);
     }
 
+    /// Get page number of the currently active page starting at 1.
+    /// Carefull when calling this after endDocument()
+    pub fn getCurrentPageNumber(self: *PDFWriter) usize {
+        // number of pages finished plus current one
+        return self.pageIds.items.len + 1;
+    }
+
     fn writeCatalog(self: *PDFWriter, pageTreeId: usize) !usize {
         const catalogId = try self.startObject();
         try self.appendFormatted("<<\n/Type /Catalog\n/Pages {d} 0 R\n>>\n", .{pageTreeId});

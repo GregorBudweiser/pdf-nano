@@ -54,6 +54,10 @@ export class PDFDocument {
         this.callH('freeEncoder');
     }
 
+    showPageNumbers(alignment: TextAlignment, fontSize: number) {
+        this.callH('showPageNumbers', alignment, fontSize);
+    }
+
     advanceCursor(dots: number) {
         this.callH('advanceCursor', dots);
     }
@@ -144,6 +148,16 @@ export class PDFDocument {
             end++;
         }
         return PDFDocument.memory.slice(outPtr, end);
+    }
+
+    getVersion(): string {
+        const outPtr = (<any>PDFDocument.wasmInstance.exports['getVersion'])();
+        let end = outPtr;
+        const array = PDFDocument.memory;
+        while (array.at(end) != 0) {
+            end++;
+        }
+        return new TextDecoder().decode(PDFDocument.memory.slice(outPtr, end));
     }
 
     private allocAndEncodeString(text: string): number {

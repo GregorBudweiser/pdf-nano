@@ -40,6 +40,7 @@ void advanceCursor(encoder_handle handle, uint16_t y);
 void setFont(encoder_handle handle, uint8_t fontId);
 void setFontSize(encoder_handle handle, uint8_t size);
 
+int32_t showPageNumbers(encoder_handle handle, uint32_t alignment, uint8_t fontSize);
 int32_t addText(encoder_handle handle, const char* text);
 int32_t addHorizontalLine(encoder_handle handle, float thickness);
 

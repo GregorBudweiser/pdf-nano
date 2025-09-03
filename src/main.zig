@@ -11,6 +11,8 @@ pub fn main() !void {
     defer doc.deinit();
 
     try doc.setupDocument(PageFormat.A4, PageOrientation.PORTRAIT);
+    try doc.showPageNumbers(TextAlignment.CENTERED, 10);
+
     doc.setFont(PredefinedFonts.helveticaBold);
     doc.setFontSize(36);
     try doc.addText("PDF-Nano v" ++ PDF_NANO_VERSION);

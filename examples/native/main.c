@@ -3,6 +3,7 @@
 
 int main(int argc, char** argv) {
     encoder_handle handle = createEncoder(A4, PORTRAIT);
+    showPageNumbers(handle, CENTERED, 10);
     setFont(handle, HELVETICA_BOLD);
     setFontSize(handle, 36);
     char title[100];

@@ -8,7 +8,7 @@ const TextAlignment = @import("layouter.zig").TextAlignment;
 const Table = @import("table.zig").Table;
 const PageProperties = @import("page_properties.zig").PageProperties;
 
-pub const PDF_NANO_VERSION: [:0]const u8 = "0.7.0";
+pub const PDF_NANO_VERSION: [:0]const u8 = "0.8.0";
 
 pub const PageOrientation = enum(c_uint) { PORTRAIT, LANDSCAPE };
 pub const PageFormat = enum(c_uint) { LETTER, A4 };
@@ -72,8 +72,16 @@ pub const PDFDocument = struct {
         self.setDefaultStyle();
     }
 
+    pub fn showPageNumbers(self: *PDFDocument, alignment: TextAlignment, fontSize: u8) !void {
+        self.pageProperties.footer = .PAGE_NUMBER;
+        self.pageProperties.footerStyle.alignment = alignment;
+        self.pageProperties.footerStyle.fontSize = fontSize;
+        try self.addFooter();
+    }
+
     pub fn breakPage(self: *PDFDocument) !void {
         try self.writer.newPage(self.pageProperties.width, self.pageProperties.height);
+        try self.addFooter();
         self.cursor.y = self.pageProperties.getContentTop();
         try self.writer.setColor(self.cursor.style.fontColor);
         try self.writer.setStrokeColor(self.cursor.style.strokeColor);
@@ -126,6 +134,7 @@ pub const PDFDocument = struct {
             if (y + layouter.getLineGap() < self.pageProperties.getContentBottom()) {
                 self.resetCursorPos();
                 try self.writer.newPage(self.pageProperties.width, self.pageProperties.height);
+                try self.addFooter();
                 y = self.pageProperties.getContentTop() - layouter.getLineHeight();
             }
 
@@ -147,6 +156,7 @@ pub const PDFDocument = struct {
         while (!self.table.isRowDone()) {
             _ = try self.table.finishTable(&self.writer);
             try self.writer.newPage(self.pageProperties.width, self.pageProperties.height);
+            try self.addFooter();
             self.table.y = self.pageProperties.getContentTop();
             self.table.currentRowY = self.table.y;
 
@@ -202,6 +212,26 @@ pub const PDFDocument = struct {
             .fillColor = Color.WHITE,
             .alignment = TextAlignment.LEFT,
         };
+    }
+
+    fn addFooter(self: *PDFDocument) !void {
+        switch (self.pageProperties.footer) {
+            .PAGE_NUMBER => {
+                var buf: [32]u8 = undefined;
+                const text = try std.fmt.bufPrint(&buf, "{d}", .{self.writer.getCurrentPageNumber()});
+                var layouter = try Layouter.init(
+                    text,
+                    self.pageProperties.getContentLeft(),
+                    self.pageProperties.getContentWidth(),
+                    self.pageProperties.footerStyle,
+                );
+                const someOffset = 5; // TODO: use font metrics to vertical align properly
+                try layouter.layoutLine(layouter.nextLine() orelse unreachable, self.pageProperties.getContentBottom() - self.pageProperties.footerStyle.fontSize - someOffset, &self.writer);
+            },
+            else => {
+                return;
+            },
+        }
     }
 };
 

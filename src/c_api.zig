@@ -25,6 +25,14 @@ export fn freeEncoder(doc: *PDFDocument) void {
     std.heap.page_allocator.destroy(doc);
 }
 
+export fn showPageNumbers(doc: *PDFDocument, alignment: u32, fontSize: u8) i32 {
+    if (doc.showPageNumbers(@enumFromInt(alignment), fontSize)) {
+        return 0;
+    } else |_| {
+        return -1;
+    }
+}
+
 export fn setFontSize(doc: *PDFDocument, size: u8) void {
     doc.setFontSize(size);
 }
