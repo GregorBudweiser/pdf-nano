@@ -69,9 +69,9 @@ pub const Layouter = struct {
         var whiteSpaceAtEnd: usize = 0;
         var iter = (try unicode.Utf8View.init(line)).iterator();
         while (iter.nextCodepoint()) |char| {
-            currentWidth += self.style.font.glyphAdvances[char] * self.style.fontSize;
+            currentWidth += charWidth(char, self.style);
             if (char < 0x100 and std.ascii.isWhitespace(@intCast(char))) {
-                whiteSpaceAtEnd += self.style.font.glyphAdvances[char] * self.style.fontSize;
+                whiteSpaceAtEnd += charWidth(char, self.style);
             } else {
                 whiteSpaceAtEnd = 0;
             }
@@ -138,11 +138,7 @@ pub const Layouter = struct {
         self.utf8Iter.i = pos;
 
         while (self.utf8Iter.nextCodepoint()) |char| {
-            if (char < self.style.font.glyphAdvances.len) {
-                currentWidth += self.style.font.glyphAdvances[char] * self.style.fontSize;
-            } else {
-                currentWidth += self.style.font.max * self.style.fontSize;
-            }
+            currentWidth += charWidth(char, self.style);
             if (char == std.ascii.control_code.lf) {
                 word.limiter = Limiter.linefeed;
                 break;
@@ -167,7 +163,7 @@ pub const Layouter = struct {
         var split: usize = 0;
         var lastPos: usize = pos; // position before current character/codepoint
         while (self.utf8Iter.nextCodepoint()) |char| {
-            currentWidth += self.style.font.glyphAdvances[char] * self.style.fontSize;
+            currentWidth += charWidth(char, self.style);
 
             // natural split point
             if (char == '_' or char == '.' or char == '-') {
@@ -186,6 +182,14 @@ pub const Layouter = struct {
 
         self.pos = split;
         return self.text[pos..split];
+    }
+
+    fn charWidth(char: u21, style: Style) u16 {
+        if (char < style.font.glyphAdvances.len) {
+            return style.font.glyphAdvances[char] * style.fontSize;
+        } else {
+            return style.font.max * style.fontSize;
+        }
     }
 };
 
@@ -221,4 +225,10 @@ test "split text into rows" {
 test "handle umlaut" {
     var parser = try Layouter.init("ä ö ü", 0, 72, getTestStyle());
     try std.testing.expectEqualSlices(u8, "ä ö ü", parser.nextLine().?);
+}
+
+test "handle non-latin chars" {
+    var parser = try Layouter.init("• Test", 0, 72, getTestStyle());
+    try std.testing.expectEqualSlices(u8, "• Test", parser.nextLine().?);
+    try std.testing.expectEqual(79572, try parser.getLineLength("• Test"));
 }
