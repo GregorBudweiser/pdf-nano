@@ -1,6 +1,6 @@
 const std = @import("std");
 const PDFDocument = @import("./document.zig").PDFDocument;
-const PDF_NANO_VERSION = @import("./document.zig").PDF_NANO_VERSION;
+const PDF_NANO_VERSION = @import("./document.zig").pdf_nano_version;
 const PageFormat = @import("./document.zig").PageFormat;
 const PageOrientation = @import("./document.zig").PageOrientation;
 const PredefinedFonts = @import("./font.zig").PredefinedFonts;
@@ -13,26 +13,26 @@ pub fn main() !void {
     try doc.setupDocument(PageFormat.A4, PageOrientation.PORTRAIT);
     try doc.showPageNumbers(TextAlignment.CENTERED, 10);
 
-    doc.setFont(PredefinedFonts.helveticaBold);
+    doc.setFont(PredefinedFonts.helvetica_bold);
     doc.setFontSize(36);
     try doc.addText("PDF-Nano v" ++ PDF_NANO_VERSION);
     try doc.hr(1.5);
 
     doc.advanceCursor(15);
-    doc.setFont(PredefinedFonts.helveticaRegular);
+    doc.setFont(PredefinedFonts.helvetica_regular);
     doc.setFontSize(12);
     try doc.addText("PDF-Nano is a tiny pdf library for projects where storage space is limited. The goal is to support as many features as possible while staying below ~64kB.");
 
     doc.advanceCursor(15);
-    doc.setFont(PredefinedFonts.helveticaBold);
+    doc.setFont(PredefinedFonts.helvetica_bold);
     doc.setFontSize(18);
     try doc.addText("Done:");
 
     doc.advanceCursor(5);
-    doc.setFont(PredefinedFonts.courierRegular);
+    doc.setFont(PredefinedFonts.courier_regular);
     doc.setFontSize(12);
     try doc.addText("· Basic Fonts/Text/Pages");
-    doc.setFont(PredefinedFonts.helveticaRegular);
+    doc.setFont(PredefinedFonts.helvetica_regular);
     try doc.addText("· Umlaut: äöü èàé");
     try doc.addText("· Lines/Tables");
     doc.setFontColor(0.8, 0.2, 0.1);
@@ -45,12 +45,12 @@ pub fn main() !void {
     doc.setTextAlignment(TextAlignment.LEFT);
 
     doc.advanceCursor(15);
-    doc.setFont(PredefinedFonts.helveticaBold);
+    doc.setFont(PredefinedFonts.helvetica_bold);
     doc.setFontSize(18);
     try doc.addText("Todo:");
 
     doc.advanceCursor(5);
-    doc.setFont(PredefinedFonts.helveticaRegular);
+    doc.setFont(PredefinedFonts.helvetica_regular);
     doc.setFontSize(12);
     try doc.addText("· Justify Text");
 

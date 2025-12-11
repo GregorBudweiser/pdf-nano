@@ -15,41 +15,41 @@ pub const Footer = enum {
 pub const PageProperties = struct {
     width: u16 = 612,
     height: u16 = 792,
-    documentBorder: u16 = 72 * 3 / 4, // 3/4 inch
+    document_border: u16 = 72 * 3 / 4, // 3/4 inch
     footer: Footer = .PAGE_NUMBER,
-    footerStyle: Style = .{
-        .fontSize = 12,
-        .font = PredefinedFonts.helveticaRegular,
-        .fontColor = Color.BLACK,
-        .strokeColor = Color.BLACK,
-        .fillColor = Color.WHITE,
+    footer_style: Style = .{
+        .font_size = 12,
+        .font = PredefinedFonts.helvetica_regular,
+        .font_color = Color.BLACK,
+        .stroke_color = Color.BLACK,
+        .fill_color = Color.WHITE,
         .alignment = TextAlignment.RIGHT,
     },
 
     pub fn getContentTop(self: *const PageProperties) u16 {
-        return self.height - self.documentBorder;
+        return self.height - self.document_border;
     }
 
     pub fn getContentBottom(self: *const PageProperties) u16 {
         switch (self.footer) {
             .NONE => {
-                return self.documentBorder;
+                return self.document_border;
             },
             else => {
-                return self.documentBorder + 2 * self.footerStyle.fontSize;
+                return self.document_border + 2 * self.footer_style.font_size;
             },
         }
     }
 
     pub fn getContentWidth(self: *const PageProperties) u16 {
-        return self.width - 2 * self.documentBorder;
+        return self.width - 2 * self.document_border;
     }
 
     pub fn getContentLeft(self: *const PageProperties) u16 {
-        return self.documentBorder;
+        return self.document_border;
     }
 
     pub fn getContentRight(self: *const PageProperties) u16 {
-        return self.width - self.documentBorder;
+        return self.width - self.document_border;
     }
 };

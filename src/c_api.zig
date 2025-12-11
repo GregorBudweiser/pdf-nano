@@ -25,8 +25,8 @@ export fn freeEncoder(doc: *PDFDocument) void {
     std.heap.page_allocator.destroy(doc);
 }
 
-export fn showPageNumbers(doc: *PDFDocument, alignment: u32, fontSize: u8) i32 {
-    if (doc.showPageNumbers(@enumFromInt(alignment), fontSize)) {
+export fn showPageNumbers(doc: *PDFDocument, alignment: u32, font_size: u8) i32 {
+    if (doc.showPageNumbers(@enumFromInt(alignment), font_size)) {
         return 0;
     } else |_| {
         return -1;
@@ -40,13 +40,13 @@ export fn setFontSize(doc: *PDFDocument, size: u8) void {
 export fn setFont(doc: *PDFDocument, fontId: u8) void {
     switch (fontId) {
         2 => {
-            doc.setFont(PredefinedFonts.helveticaBold);
+            doc.setFont(PredefinedFonts.helvetica_bold);
         },
         3 => {
-            doc.setFont(PredefinedFonts.courierRegular);
+            doc.setFont(PredefinedFonts.courier_regular);
         },
         else => {
-            doc.setFont(PredefinedFonts.helveticaRegular);
+            doc.setFont(PredefinedFonts.helvetica_regular);
         },
     }
 }
@@ -79,19 +79,19 @@ export fn render(doc: *PDFDocument) usize {
     }
 }
 
-export fn startTable(doc: *PDFDocument, columns: usize, numColumns: u8) void {
+export fn startTable(doc: *PDFDocument, columns: usize, num_columns: u8) void {
     var cols = @as(*[16]u16, @ptrFromInt(columns));
-    doc.startTable(cols[0..numColumns]);
+    doc.startTable(cols[0..num_columns]);
 }
 
-export fn writeRow(doc: *PDFDocument, texts: *[16]usize, numColumns: u8) i32 {
+export fn writeRow(doc: *PDFDocument, texts: *[16]usize, num_columns: u8) i32 {
     var cols: [16][]u8 = [1][]u8{""} ** 16;
     var i: u8 = 0;
-    while (i < numColumns) : (i += 1) {
+    while (i < num_columns) : (i += 1) {
         cols[i] = std.mem.span(@as([*c]u8, @ptrFromInt(texts[i])));
     }
 
-    if (doc.writeRow(cols[0..numColumns])) {
+    if (doc.writeRow(cols[0..num_columns])) {
         return 0;
     } else |_| {
         return -1;
@@ -107,7 +107,7 @@ export fn finishTable(doc: *PDFDocument) i32 {
 }
 
 export fn getVersion() [*:0]const u8 {
-    return PDFNano.PDF_NANO_VERSION;
+    return PDFNano.pdf_nano_version;
 }
 
 export fn breakPage(doc: *PDFDocument) i32 {
@@ -118,14 +118,14 @@ export fn breakPage(doc: *PDFDocument) i32 {
     }
 }
 
-export fn setTableHeaders(doc: *PDFDocument, headers: *[16]usize, numColumns: u8, repeatHeader: bool) i32 {
+export fn setTableHeaders(doc: *PDFDocument, headers: *[16]usize, num_columns: u8, repeat_header: bool) i32 {
     var cols: [16][]u8 = [1][]u8{""} ** 16;
     var i: u8 = 0;
-    while (i < numColumns) : (i += 1) {
+    while (i < num_columns) : (i += 1) {
         cols[i] = std.mem.span(@as([*c]u8, @ptrFromInt(headers[i])));
     }
 
-    if (doc.setTableHeaders(cols[0..numColumns], repeatHeader)) {
+    if (doc.setTableHeaders(cols[0..num_columns], repeat_header)) {
         return 0;
     } else |_| {
         return -1;

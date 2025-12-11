@@ -11,7 +11,7 @@ pub const TextAlignment = enum(c_uint) { LEFT, CENTERED, RIGHT };
 /// Internaly everything is in units; functions/methods return values in points.
 pub const Layouter = struct {
     text: []const u8 = undefined,
-    utf8Iter: unicode.Utf8Iterator = undefined,
+    utf8_iter: unicode.Utf8Iterator = undefined,
     pos: usize = undefined,
     x: u16,
     /// in font specific unit (unit per em)
@@ -32,31 +32,31 @@ pub const Layouter = struct {
     };
 
     /// @param: columnWidth in points (1/72th inch)
-    pub fn init(text: []const u8, columnStart: u16, columnWidth: u16, style: Style) !Layouter {
+    pub fn init(text: []const u8, column_start: u16, column_width: u16, style: Style) !Layouter {
         const iter = (try unicode.Utf8View.init(text)).iterator();
         return Layouter{
             .pos = 0,
             .text = text,
-            .x = columnStart,
-            .width = columnWidth * style.font.unitsPerEm,
+            .x = column_start,
+            .width = column_width * style.font.units_per_em,
             .style = style,
-            .utf8Iter = iter,
+            .utf8_iter = iter,
         };
     }
 
     pub fn layoutLine(self: *Layouter, line: []const u8, y: i32, writer: *PDFWriter) !void {
         switch (self.style.alignment) {
             .RIGHT => {
-                const x = @as(usize, @intCast(self.x)) + self.width / self.style.font.unitsPerEm - try self.getLineLength(line) / self.style.font.unitsPerEm;
-                try writer.putText(line, self.style.font.id, self.style.fontSize, @intCast(x), y);
+                const x = @as(usize, @intCast(self.x)) + self.width / self.style.font.units_per_em - try self.getLineLength(line) / self.style.font.units_per_em;
+                try writer.putText(line, self.style.font.id, self.style.font_size, @intCast(x), y);
             },
             .CENTERED => {
-                const x = @as(usize, @intCast(self.x)) + (self.width / self.style.font.unitsPerEm - try self.getLineLength(line) / self.style.font.unitsPerEm) / 2;
-                try writer.putText(line, self.style.font.id, self.style.fontSize, @intCast(x), y);
+                const x = @as(usize, @intCast(self.x)) + (self.width / self.style.font.units_per_em - try self.getLineLength(line) / self.style.font.units_per_em) / 2;
+                try writer.putText(line, self.style.font.id, self.style.font_size, @intCast(x), y);
             },
             // default is left aligned
             else => {
-                try writer.putText(line, self.style.font.id, self.style.fontSize, self.x, y);
+                try writer.putText(line, self.style.font.id, self.style.font_size, self.x, y);
             },
         }
     }
@@ -65,31 +65,31 @@ pub const Layouter = struct {
     /// ignores whitespace characters at the end of the line/string
     /// by design no whitespace should be at the beginning of the line/string
     fn getLineLength(self: *const Layouter, line: []const u8) !usize {
-        var currentWidth: usize = 0;
-        var whiteSpaceAtEnd: usize = 0;
+        var current_width: usize = 0;
+        var trailing_whitespace: usize = 0;
         var iter = (try unicode.Utf8View.init(line)).iterator();
         while (iter.nextCodepoint()) |char| {
-            currentWidth += charWidth(char, self.style);
+            current_width += charWidth(char, self.style);
             if (char < 0x100 and std.ascii.isWhitespace(@intCast(char))) {
-                whiteSpaceAtEnd += charWidth(char, self.style);
+                trailing_whitespace += charWidth(char, self.style);
             } else {
-                whiteSpaceAtEnd = 0;
+                trailing_whitespace = 0;
             }
         }
-        return currentWidth - whiteSpaceAtEnd;
+        return current_width - trailing_whitespace;
     }
 
     pub fn getLineHeight(self: *const Layouter) u16 {
-        return self.style.font.getLineHeight(self.style.fontSize);
+        return self.style.font.getLineHeight(self.style.font_size);
     }
 
     // baseline to highest point
     pub fn getBaseline(self: *const Layouter) u16 {
-        return self.style.font.getBaseline(self.style.fontSize);
+        return self.style.font.getBaseline(self.style.font_size);
     }
 
     pub fn getLineGap(self: *const Layouter) u16 {
-        return self.style.font.getLineGap(self.style.fontSize);
+        return self.style.font.getLineGap(self.style.font_size);
     }
 
     pub fn remainingText(self: *Layouter) []const u8 {
@@ -104,80 +104,80 @@ pub const Layouter = struct {
         }
 
         const max = self.width;
-        var currentPos = self.pos;
-        var currentWidth: usize = 0;
-        while (self.nextWord(currentPos, currentWidth)) |word| {
-            if (currentWidth + word.width > max and word.limiter != Limiter.whitespace) {
+        var current_pos = self.pos;
+        var current_width: usize = 0;
+        while (self.nextWord(current_pos, current_width)) |word| {
+            if (current_width + word.width > max and word.limiter != Limiter.whitespace) {
                 break;
             }
 
-            currentPos += word.length;
-            currentWidth += word.width;
+            current_pos += word.length;
+            current_width += word.width;
             if (word.limiter == Limiter.linefeed) {
                 break;
             }
         }
 
         // handle if no progress was made (word does not fit line)
-        if (currentPos == self.pos) {
-            return self.nextWordChopped(currentPos);
+        if (current_pos == self.pos) {
+            return self.nextWordChopped(current_pos);
         }
 
-        const lastPos = self.pos;
-        self.pos = currentPos;
-        return self.text[lastPos..@min(currentPos, self.text.len)];
+        const last_pos = self.pos;
+        self.pos = current_pos;
+        return self.text[last_pos..@min(current_pos, self.text.len)];
     }
 
-    fn nextWord(self: *Layouter, pos: usize, prevWidth: usize) ?Word {
-        if (pos >= self.text.len or prevWidth > self.width) {
+    fn nextWord(self: *Layouter, pos: usize, prev_width: usize) ?Word {
+        if (pos >= self.text.len or prev_width > self.width) {
             return null;
         }
-        const spaceLeft = self.width - prevWidth;
-        var currentWidth: usize = 0;
+        const space_left = self.width - prev_width;
+        var current_width: usize = 0;
         var word: Word = Word{ .limiter = Limiter.endOfString };
-        self.utf8Iter.i = pos;
+        self.utf8_iter.i = pos;
 
-        while (self.utf8Iter.nextCodepoint()) |char| {
-            currentWidth += charWidth(char, self.style);
+        while (self.utf8_iter.nextCodepoint()) |char| {
+            current_width += charWidth(char, self.style);
             if (char == std.ascii.control_code.lf) {
                 word.limiter = Limiter.linefeed;
                 break;
             } else if (char < 0x100 and std.ascii.isWhitespace(@intCast(char))) {
                 word.limiter = Limiter.whitespace;
                 break;
-            } else if (currentWidth > spaceLeft) {
+            } else if (current_width > space_left) {
                 word.limiter = Limiter.overflow;
                 break;
             }
         }
 
-        word.length = self.utf8Iter.i - pos;
-        word.width = currentWidth;
+        word.length = self.utf8_iter.i - pos;
+        word.width = current_width;
         return word;
     }
 
     fn nextWordChopped(self: *Layouter, pos: usize) []const u8 {
-        var currentWidth: usize = 0;
-        self.utf8Iter.i = pos;
+        var current_width: usize = 0;
+        self.utf8_iter.i = pos;
 
         var split: usize = 0;
-        var lastPos: usize = pos; // position before current character/codepoint
-        while (self.utf8Iter.nextCodepoint()) |char| {
-            currentWidth += charWidth(char, self.style);
+        var last_pos: usize = pos; // position before current character/codepoint
+        while (self.utf8_iter.nextCodepoint()) |char| {
+            current_width += charWidth(char, self.style);
 
             // natural split point
             if (char == '_' or char == '.' or char == '-') {
-                split = self.utf8Iter.i;
+                split = self.utf8_iter.i;
             }
 
-            if (currentWidth > self.width) {
+            if (current_width > self.width) {
                 if (split == 0) {
-                    split = lastPos;
+                    split = last_pos;
                 }
                 break;
             }
 
-            lastPos = self.utf8Iter.i;
+            last_pos = self.utf8_iter.i;
         }
 
         self.pos = split;
@@ -185,21 +185,21 @@ pub const Layouter = struct {
     }
 
     fn charWidth(char: u21, style: Style) u16 {
-        if (char < style.font.glyphAdvances.len) {
-            return style.font.glyphAdvances[char] * style.fontSize;
+        if (char < style.font.glyph_advances.len) {
+            return style.font.glyph_advances[char] * style.font_size;
         } else {
-            return style.font.max * style.fontSize;
+            return style.font.max * style.font_size;
         }
     }
 };
 
 fn getTestStyle() Style {
     return Style{
-        .font = font.PredefinedFonts.helveticaRegular,
-        .fontSize = 12,
-        .fontColor = Color.BLACK,
-        .strokeColor = Color.BLACK,
-        .fillColor = Color.WHITE,
+        .font = font.PredefinedFonts.helvetica_regular,
+        .font_size = 12,
+        .font_color = Color.BLACK,
+        .stroke_color = Color.BLACK,
+        .fill_color = Color.WHITE,
         .alignment = TextAlignment.LEFT,
     };
 }
