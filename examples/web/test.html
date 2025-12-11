@@ -1,0 +1,302 @@
+<html>
+    <head>
+        <script type="text/javascript">
+            //===================================================================
+            // simple test for pdf-nano.wasm without need for a node setup
+            //===================================================================
+
+            async function run() {
+                // Paste base64 encoded wasm file below..
+                //$ base64 -w 0 ./zig-out/bin/pdf-nano.wasm > tmp.txt
+                var wasmString = "";
+                // insert here ~~~^
+                
+                
+                if (wasmString == "") {
+                    document.getElementById("version").innerHTML = "No wasm file. See this page's source for deails!";
+                    document.getElementById("myButton").style.visibility = 'hidden';
+                } else {
+                    await PDFDocument.loadWasm(wasmString);
+                    
+                    var doc = new PDFDocument();
+                    document.getElementById("version").innerHTML = "PDF-Nano version: " + doc.getVersion();
+                    doc.destroy();
+                }
+            }
+
+            async function createPDF() {
+                const doc = new PDFDocument();
+                doc.showPageNumbers(TextAlignment.CENTERED, 10);
+
+                doc.setFont(Font.ARIAL_BOLD);
+                doc.setFontSize(36);
+                doc.addText("PDF-Nano v" + doc.getVersion());
+                doc.addHorizontalLine(1.5);
+
+                doc.advanceCursor(15);
+                doc.setFont(Font.ARIAL_REGULAR);
+                doc.setFontSize(12);
+                doc.addText("PDF-Nano is a tiny pdf library for projects where storage space is limited. The goal is to support as many features as possible while staying below ~64kB.");
+
+                doc.advanceCursor(15);
+                doc.setFont(Font.ARIAL_BOLD);
+                doc.setFontSize(18);
+                doc.addText("Done:");
+
+                doc.advanceCursor(5);
+                doc.setFont(Font.COURIER);
+                doc.setFontSize(12);
+                doc.addText("· Basic Fonts/Text/Pages");
+                doc.setFont(Font.ARIAL_REGULAR);
+                doc.addText("· Umlaut: äöü èàé");
+                doc.addText("· Lines/Tables");
+                doc.setFontColor(0.8, 0.2, 0.1);
+                doc.addText("· Colors");
+                doc.setFontColor(0, 0, 0);
+                doc.setTextAlignment(TextAlignment.CENTERED);
+                doc.addText("· Centered");
+                doc.setTextAlignment(TextAlignment.RIGHT);
+                doc.addText("· Right Align");
+                doc.setTextAlignment(TextAlignment.LEFT);
+
+                doc.advanceCursor(15);
+                doc.setFont(Font.ARIAL_BOLD);
+                doc.setFontSize(18);
+                doc.addText("Todo:");
+
+                doc.advanceCursor(5);
+                doc.setFont(Font.ARIAL_REGULAR);
+                doc.setFontSize(12);
+                doc.addText("· Justify Text");
+                
+                doc.advanceCursor(15);
+                doc.startTable([100, 100, 286]);
+
+                doc.setTableHeader(["Table..", "..header..", "..with backgound color.."], true);
+
+                for (var i = 0; i < 20; i++) {
+                var value = ((i&1) == 0) ? 1 : 0.95;
+                doc.setFillColor(value, value, value);
+                doc.addTableRow(["One..", "Two..", "Three!"]);
+                }
+
+                doc.finishTable();
+
+                doc.breakPage();
+                doc.addText("Next page!");
+
+                const data = doc.render();
+                doc.destroy();
+
+                downloadBlob(new Blob([data]), "hello_from_wasm.pdf", "application/pdf");
+            }
+
+            function downloadURL(data, fileName) {
+                const a = document.createElement('a');
+                a.href = data;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.style.display = 'none';
+                a.click();
+                a.remove();
+            }
+
+            function downloadBlob(data, fileName, mimeType) {
+                const blob = new Blob([data], { type: mimeType })
+                const url = window.URL.createObjectURL(blob)
+                downloadURL(url, fileName)
+                setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+            }
+
+            class PageFormat {
+                static LETTER = 0;
+                static A4 = 1;
+            };
+
+            class PageOrientation {
+                static PORTRAIT = 0;
+                static LANDSCAPE = 1;
+            };
+
+            class Font {
+                static ARIAL_REGULAR = 1;
+                static ARIAL_BOLD = 2;
+                static COURIER = 3;
+            };
+
+            class TextAlignment {
+                static LEFT = 0;
+                static CENTERED = 1;
+                static RIGHT = 2;
+            };
+
+            class PDFDocument {
+                static wasmInstance;
+
+                static memory() {
+                    return new Uint8Array(PDFDocument.wasmInstance.exports['memory']['buffer']);
+                }
+
+                static view() {
+                    return new DataView(PDFDocument.memory().buffer);
+                }
+
+                static async loadWasm(wasmString) {
+                    const buf = Uint8Array.fromBase64(wasmString);
+                    this.wasmInstance = (await WebAssembly.instantiate(buf, { env: {} })).instance;
+                }
+
+                handle;
+
+                constructor() {
+                    this.handle = (PDFDocument.wasmInstance.exports['createEncoder'])(PageFormat.A4, PageOrientation.PORTRAIT);
+                }
+
+                destroy() {
+                    this.callH('freeEncoder');
+                }
+
+                showPageNumbers(alignment, fontSize) {
+                    this.callH('showPageNumbers', alignment, fontSize);
+                }
+
+                advanceCursor(dots) {
+                    this.callH('advanceCursor', dots);
+                }
+
+                setFont(font) {
+                    console.log("setFont(" + font + ")");
+                    this.callH('setFont', font);
+                }
+
+                setFontSize(size) {
+                    this.callH('setFontSize', size);
+                }
+
+                addHorizontalLine(thickness) {
+                    this.callH('addHorizontalLine', thickness);
+                }
+
+                addText(text) {
+                    const strPtr = this.allocAndEncodeString(text);
+                    this.callH('addText', strPtr);
+                    this.free(strPtr);
+                }
+
+                startTable(columnWidths) {
+                    const ptr = this.alloc(2*columnWidths.length);
+                    columnWidths.forEach((v,i) => PDFDocument.view().setUint16(ptr + 2*i, v, true));
+                    this.callH('startTable', ptr, columnWidths.length);
+                    this.free(ptr);
+                }
+
+                setTableHeader(headers, repeatHeaders) {
+                    const ptr = this.alloc(4*headers.length);
+                    headers.forEach((v, i) => {
+                        const str = this.allocAndEncodeString(v);
+                        PDFDocument.view().setUint32(ptr + 4*i, str, true)
+                    });
+
+                    this.callH('setTableHeaders', ptr, headers.length, repeatHeaders);
+
+                    headers.forEach((v, i) => this.free(PDFDocument.view().getUint32(ptr + 4*i, true)));
+                    this.free(ptr);
+                }
+
+                addTableRow(columns) {
+                    const ptr = this.alloc(4*columns.length);
+                    columns.forEach((v, i) => {
+                        const str = this.allocAndEncodeString(v);
+                        PDFDocument.view().setUint32(ptr + 4*i, str, true)
+                    });
+
+                    this.callH('writeRow', ptr, columns.length);
+
+                    columns.forEach((v, i) => this.free(PDFDocument.view().getUint32(ptr + 4*i, true)));
+                    this.free(ptr);
+                }
+
+                finishTable() {
+                    this.callH('finishTable');
+                }
+
+                breakPage() {
+                    this.callH('breakPage');
+                }
+
+                setTextAlignment(alignment) {
+                    this.callH('setTextAlignment', alignment);
+                }
+
+                setFontColor(r, g, b) {
+                    this.callH('setFontColor', r, g, b);
+                }
+
+                setFillColor(r, g, b) {
+                    this.callH('setFillColor', r, g, b);
+                }   
+
+                setStrokeColor(r, g, b) {
+                    this.callH('setStrokeColor', r, g, b);
+                }
+
+                render() {
+                    const outPtr = this.callH('render');
+                    if (outPtr == 0) {
+                        throw "Rendering PDF failed";
+                    }
+                    let end = outPtr;
+                    const array = PDFDocument.memory();
+                    while (array.at(end) != 0) {
+                        end++;
+                    }
+                    return array.slice(outPtr, end);
+                }
+
+                getVersion() {
+                    const outPtr = (PDFDocument.wasmInstance.exports['getVersion'])();
+                    let end = outPtr;
+                    const array = PDFDocument.memory();
+                    while (array.at(end) != 0) {
+                        end++;
+                    }
+                    return new TextDecoder().decode(array.slice(outPtr, end));
+                }
+
+                allocAndEncodeString(text) {
+                    // https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto
+                    text += '\0';
+                    const nBytes = text.length*3;
+                    const strPtr = this.alloc(nBytes);
+                    new TextEncoder().encodeInto(text, PDFDocument.memory().subarray(strPtr, strPtr + nBytes));
+                    return strPtr;
+                }
+
+                alloc(size) {
+                    return this.call('alloc', size);
+                }
+
+                free(ptr) {
+                    this.call('free', ptr);
+                }
+
+                callH(functionName, ...args) {
+                    return this.call(functionName, this.handle, ...args);
+                }
+
+                call(functionName, ...args) {
+                    const result = (PDFDocument.wasmInstance.exports[functionName])(...args);
+                    if (result == -1) {
+                        throw "Error while generating PDF @" + functionName; 
+                    }
+                    return result;
+                }
+            }
+        </script>
+    </head>
+    <body onload="run()">
+        <div style="font-family: Arial, Helvetica, sans-serif" id="version"></div>
+        <br>
+        <button id="myButton" type="button" onclick="createPDF()">Create PDF</button>
+    </body>
+</html>
