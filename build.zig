@@ -4,6 +4,13 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // include build.zig.zon as module to get version string etc..
+    const build_zig_zon = b.createModule(.{
+        .root_source_file = b.path("build.zig.zon"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     // wasm needs to be compiled as executable with "-fnoentry"
     if (target.result.cpu.arch.isWasm()) {
         // pdf-nano "library" (i.e. wasm exe)
@@ -17,9 +24,10 @@ pub fn build(b: *std.Build) void {
         });
         exe.entry = .disabled;
         exe.rdynamic = true;
+        exe.root_module.addImport("build_zig_zon", build_zig_zon);
         b.installArtifact(exe);
     } else {
-        // pdf-nano library
+        // pdf-nano library (c api/library for other languages)
         const lib = b.addLibrary(.{
             .linkage = .dynamic,
             .name = "pdf-nano",
@@ -29,9 +37,10 @@ pub fn build(b: *std.Build) void {
                 .optimize = optimize,
             }),
         });
+        lib.root_module.addImport("build_zig_zon", build_zig_zon);
         b.installArtifact(lib);
 
-        // example program
+        // standalone zig program (uses zig source code directly rather than linking libpdf-nano.so)
         const exe = b.addExecutable(.{
             .name = "pdf-nano",
             .root_module = b.createModule(.{
@@ -40,6 +49,7 @@ pub fn build(b: *std.Build) void {
                 .optimize = optimize,
             }),
         });
+        exe.root_module.addImport("build_zig_zon", build_zig_zon);
         b.installArtifact(exe);
     }
 
