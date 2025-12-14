@@ -1,7 +1,7 @@
 .{
     .name = .pdf_nano,
-    .version = "0.9.0",
-    .fingerprint = 0x66fa8995cec18714,
+    .version = "0.9.1",
+    .fingerprint = 0x66fa8995b6910d83,
     .minimum_zig_version = "0.15.2",
     .dependencies = .{},
     .paths = .{

@@ -1,56 +1,51 @@
 const std = @import("std");
-const PDFDocument = @import("./document.zig").PDFDocument;
-const PDF_NANO_VERSION = @import("./document.zig").pdf_nano_version;
-const PageFormat = @import("./document.zig").PageFormat;
-const PageOrientation = @import("./document.zig").PageOrientation;
-const PredefinedFonts = @import("./font.zig").PredefinedFonts;
-const TextAlignment = @import("./layouter.zig").TextAlignment;
+const pdf = @import("pdf_nano");
 
 pub fn main() !void {
-    var doc = PDFDocument.init(std.heap.page_allocator);
+    var doc = pdf.PDFDocument.init(std.heap.page_allocator);
     defer doc.deinit();
 
-    try doc.setupDocument(PageFormat.A4, PageOrientation.PORTRAIT);
-    try doc.showPageNumbers(TextAlignment.CENTERED, 10);
+    try doc.setupDocument(pdf.PageFormat.A4, pdf.PageOrientation.PORTRAIT);
+    try doc.showPageNumbers(pdf.TextAlignment.CENTERED, 10);
 
-    doc.setFont(PredefinedFonts.helvetica_bold);
+    doc.setFont(pdf.PredefinedFonts.helvetica_bold);
     doc.setFontSize(36);
-    try doc.addText("PDF-Nano v" ++ PDF_NANO_VERSION);
+    try doc.addText("PDF-Nano v" ++ pdf.pdf_nano_version);
     try doc.hr(1.5);
 
     doc.advanceCursor(15);
-    doc.setFont(PredefinedFonts.helvetica_regular);
+    doc.setFont(pdf.PredefinedFonts.helvetica_regular);
     doc.setFontSize(12);
     try doc.addText("PDF-Nano is a tiny pdf library for projects where storage space is limited. The goal is to support as many features as possible while staying below ~64kB.");
 
     doc.advanceCursor(15);
-    doc.setFont(PredefinedFonts.helvetica_bold);
+    doc.setFont(pdf.PredefinedFonts.helvetica_bold);
     doc.setFontSize(18);
     try doc.addText("Done:");
 
     doc.advanceCursor(5);
-    doc.setFont(PredefinedFonts.courier_regular);
+    doc.setFont(pdf.PredefinedFonts.courier_regular);
     doc.setFontSize(12);
     try doc.addText("· Basic Fonts/Text/Pages");
-    doc.setFont(PredefinedFonts.helvetica_regular);
+    doc.setFont(pdf.PredefinedFonts.helvetica_regular);
     try doc.addText("· Umlaut: äöü èàé");
     try doc.addText("· Lines/Tables");
     doc.setFontColor(0.8, 0.2, 0.1);
     try doc.addText("· Colors");
     doc.setFontColor(0, 0, 0);
-    doc.setTextAlignment(TextAlignment.CENTERED);
+    doc.setTextAlignment(pdf.TextAlignment.CENTERED);
     try doc.addText("· Centered");
-    doc.setTextAlignment(TextAlignment.RIGHT);
+    doc.setTextAlignment(pdf.TextAlignment.RIGHT);
     try doc.addText("· Right Align");
-    doc.setTextAlignment(TextAlignment.LEFT);
+    doc.setTextAlignment(pdf.TextAlignment.LEFT);
 
     doc.advanceCursor(15);
-    doc.setFont(PredefinedFonts.helvetica_bold);
+    doc.setFont(pdf.PredefinedFonts.helvetica_bold);
     doc.setFontSize(18);
     try doc.addText("Todo:");
 
     doc.advanceCursor(5);
-    doc.setFont(PredefinedFonts.helvetica_regular);
+    doc.setFont(pdf.PredefinedFonts.helvetica_regular);
     doc.setFontSize(12);
     try doc.addText("· Justify Text");
 

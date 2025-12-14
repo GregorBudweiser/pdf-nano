@@ -40,6 +40,14 @@ pub fn build(b: *std.Build) void {
         lib.root_module.addImport("build_zig_zon", build_zig_zon);
         b.installArtifact(lib);
 
+        // root module for zig users
+        const root_module = b.addModule("pdf_nano", .{
+            .root_source_file = b.path("src/root.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        root_module.addImport("build_zig_zon", build_zig_zon);
+
         // standalone zig program (uses zig source code directly rather than linking libpdf-nano.so)
         const exe = b.addExecutable(.{
             .name = "pdf-nano",
@@ -49,7 +57,7 @@ pub fn build(b: *std.Build) void {
                 .optimize = optimize,
             }),
         });
-        exe.root_module.addImport("build_zig_zon", build_zig_zon);
+        exe.root_module.addImport("pdf_nano", root_module);
         b.installArtifact(exe);
     }
 
