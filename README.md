@@ -28,7 +28,7 @@ PDF-Nano is written in Zig, so you will need the Zig compiler. Then simply compi
 ### Build compatibility
 | PDF-Nano     | Zig                        |
 |--------------|----------------------------|
-| **v0.9.0**   | **v0.15.2**                |
+| **v0.9.x**   | **v0.15.2**                |
 | v0.8.x       | v0.15.x                    |
 | v0.7.0       | v0.15.x                    |
 | v0.6.0       | v0.14.x                    |
@@ -55,3 +55,24 @@ int main(int argc, char** argv) {
 ```
 
 There is also a [typescript wrapper](examples/web/pdf-nano.ts).
+
+### How to add PDF-Nano to your Zig project
+To use PDF-Nano via Zig's package manager you can add it as a dependency to your project:
+
+    zig fetch --save git+https://github.com/GregorBudweiser/pdf-nano.git
+
+Then in your build.zig file add this:
+
+```zig
+const pdf_nano_module = b.dependency("pdf_nano", .{
+    .target = target,
+    .optimize = optimize,
+});
+yourModule.addImport("pdf_nano", pdf_nano_module.module("pdf_nano"));
+```
+
+Then in your module's zig code you can import it:
+
+```zig
+const pdf = @import("pdf_nano");
+```
