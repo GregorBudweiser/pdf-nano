@@ -75,9 +75,9 @@
                 doc.setTableHeader(["Table..", "..header..", "..with backgound color.."], true);
 
                 for (var i = 0; i < 20; i++) {
-                var value = ((i&1) == 0) ? 1 : 0.95;
-                doc.setFillColor(value, value, value);
-                doc.addTableRow(["One..", "Two..", "Three!"]);
+                    var value = ((i&1) == 0) ? 1 : 0.95;
+                    doc.setFillColor(value, value, value);
+                    doc.addTableRow(["One..", "Two..", "Three!"]);
                 }
 
                 doc.finishTable();
@@ -245,12 +245,8 @@
                     if (outPtr == 0) {
                         throw "Rendering PDF failed";
                     }
-                    let end = outPtr;
-                    const array = PDFDocument.memory();
-                    while (array.at(end) != 0) {
-                        end++;
-                    }
-                    return array.slice(outPtr, end);
+                    const end = outPtr + this.callH('size');
+                    return PDFDocument.memory().slice(outPtr, end);
                 }
 
                 getVersion() {

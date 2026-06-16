@@ -65,6 +65,12 @@ pub const PDFDocument = struct {
         return self.writer.buffer.items;
     }
 
+    /// Query size of rendered document (needed on c api layer).
+    /// Relying on zero-termination is not possible as pdf is a binary format.
+    pub fn size(self: *PDFDocument) usize {
+        return self.writer.buffer.items.len;
+    }
+
     pub fn setupDocument(self: *PDFDocument, format: PageFormat, orientation: PageOrientation) !void {
         self.page_properties.width = formats[@intFromEnum(format)][0 + @intFromEnum(orientation)];
         self.page_properties.height = formats[@intFromEnum(format)][1 - @intFromEnum(orientation)];

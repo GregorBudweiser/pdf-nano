@@ -142,11 +142,7 @@ export class PDFDocument {
         if (outPtr == 0) {
             throw "Rendering PDF failed";
         }
-        let end = outPtr;
-        const array = PDFDocument.memory;
-        while (array.at(end) != 0) {
-            end++;
-        }
+        const end = outPtr + this.callH('size');
         return PDFDocument.memory.slice(outPtr, end);
     }
 

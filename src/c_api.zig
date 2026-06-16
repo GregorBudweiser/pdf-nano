@@ -4,6 +4,9 @@ const PDFNano = @import("./document.zig");
 const PredefinedFonts = @import("font.zig").PredefinedFonts;
 const arch = @import("builtin").target.cpu.arch;
 
+// switch allocator depending on target
+const allocator: std.mem.Allocator = if (arch.isWasm()) std.heap.wasm_allocator else std.heap.page_allocator;
+
 export fn createEncoder(format: u32, orientation: u32) usize {
     if (createAndInit(format, orientation)) |doc| {
         return @intFromPtr(doc);
@@ -14,15 +17,15 @@ export fn createEncoder(format: u32, orientation: u32) usize {
 
 /// helper function for createEncoder
 fn createAndInit(format: u32, orientation: u32) !*PDFDocument {
-    var writer = try std.heap.page_allocator.create(PDFDocument);
-    writer.* = PDFDocument.init(std.heap.page_allocator);
+    var writer = try allocator.create(PDFDocument);
+    writer.* = PDFDocument.init(allocator);
     try writer.setupDocument(@enumFromInt(format), @enumFromInt(orientation));
     return writer;
 }
 
 export fn freeEncoder(doc: *PDFDocument) void {
     doc.deinit();
-    std.heap.page_allocator.destroy(doc);
+    allocator.destroy(doc);
 }
 
 export fn showPageNumbers(doc: *PDFDocument, alignment: u32, font_size: u8) i32 {
@@ -33,8 +36,8 @@ export fn showPageNumbers(doc: *PDFDocument, alignment: u32, font_size: u8) i32 
     }
 }
 
-export fn setFontSize(doc: *PDFDocument, size: u8) void {
-    doc.setFontSize(size);
+export fn setFontSize(doc: *PDFDocument, font_size: u8) void {
+    doc.setFontSize(font_size);
 }
 
 export fn setFont(doc: *PDFDocument, fontId: u8) void {
@@ -77,6 +80,10 @@ export fn render(doc: *PDFDocument) usize {
     } else |_| {
         return 0;
     }
+}
+
+export fn size(doc: *PDFDocument) usize {
+    return doc.size();
 }
 
 export fn startTable(doc: *PDFDocument, columns: usize, num_columns: u8) void {
@@ -150,7 +157,7 @@ export fn setFillColor(doc: *PDFDocument, r: f32, g: f32, b: f32) void {
 
 // allocator needed for wasm
 export fn alloc(len: usize) usize {
-    if (std.heap.page_allocator.alloc(u64, len + 7 / 8)) |data| {
+    if (allocator.alloc(u8, len)) |data| {
         return @intFromPtr(data.ptr);
     } else |_| {
         return 0;
@@ -159,7 +166,7 @@ export fn alloc(len: usize) usize {
 
 /// free memory allocated by alloc
 export fn free(ptr: usize) void {
-    std.heap.page_allocator.free(std.mem.span(@as([*:0]u64, @ptrFromInt(ptr))));
+    allocator.free(std.mem.span(@as([*:0]u8, @ptrFromInt(ptr))));
 }
 
 /// Calling saveAs() "finishes" the document.

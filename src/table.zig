@@ -30,9 +30,11 @@ pub const Table = struct {
     headers: std.array_list.Managed([]const u8) = undefined,
     repeat: bool = undefined,
     header_style: Style = undefined, // TODO default init
+    allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) Table {
         return Table{
+            .allocator = allocator,
             .headers = std.array_list.Managed([]const u8).init(allocator),
             .repeat = false,
             .header_style = Style{
@@ -105,9 +107,8 @@ pub const Table = struct {
 
         // Background needs to be rendered/inserted before actual cells
         // but we only know cell height after we rendered them..
-        var string_buffer = [_]u8{0} ** 128;
-        var alloc = std.heap.FixedBufferAllocator.init(&string_buffer);
-        var writer = PDFWriter.init(alloc.allocator());
+        var writer = PDFWriter.init(self.allocator);
+        defer writer.deinit();
         try writer.setColor(self.header_style.fill_color);
         try writer.putRect(self.x, y, self.width, -@as(i32, y - self.current_row_y));
 
@@ -128,9 +129,8 @@ pub const Table = struct {
 
         // Background needs to be rendered/inserted before actual cells
         // but we only know cell height after we rendered them..
-        var string_buffer = [_]u8{0} ** 128;
-        var alloc = std.heap.FixedBufferAllocator.init(&string_buffer);
-        var writer = PDFWriter.init(alloc.allocator());
+        var writer = PDFWriter.init(self.allocator);
+        defer writer.deinit();
         try writer.setColor(doc.cursor.style.fill_color);
         try writer.putRect(self.x, y, self.width, -@as(i32, y - self.current_row_y));
 
