@@ -8,6 +8,7 @@ const TextAlignment = @import("layouter.zig").TextAlignment;
 const Table = @import("table.zig").Table;
 const PageProperties = @import("page_properties.zig").PageProperties;
 const build = @import("build_zig_zon");
+const JPEG = @import("jpeg.zig");
 
 pub const pdf_nano_version: [:0]const u8 = build.version;
 
@@ -89,7 +90,7 @@ pub const PDFDocument = struct {
     pub fn breakPage(self: *PDFDocument) !void {
         try self.writer.newPage(self.page_properties.width, self.page_properties.height);
         try self.addFooter();
-        self.cursor.y = self.page_properties.getContentTop();
+        self.resetCursorPos();
         try self.writer.setColor(self.cursor.style.font_color);
         try self.writer.setStrokeColor(self.cursor.style.stroke_color);
     }
@@ -139,17 +140,46 @@ pub const PDFDocument = struct {
             // advance cursor by this new line, creating new page if necessary
             y -= layouter.getLineHeight();
             if (y + layouter.getLineGap() < self.page_properties.getContentBottom()) {
-                self.resetCursorPos();
-                try self.writer.newPage(self.page_properties.width, self.page_properties.height);
-                try self.addFooter();
+                try self.breakPage();
                 y = self.page_properties.getContentTop() - layouter.getLineHeight();
             }
 
             try self.writer.setColor(self.cursor.style.font_color);
             try layouter.layoutLine(line, y + layouter.getLineHeight() - layouter.getBaseline(), &self.writer);
-            //try self.writer.putText(line, self.cursor.fontId, layouter.fontSize, self.pageProperties.documentBorder, y + layouter.getLineHeight() - layouter.getBaseline());
         }
         self.cursor.y = @intCast(y);
+    }
+
+    pub fn addImage(self: *PDFDocument, raw_jpeg: []const u8, width_percentage: f32, alignment: TextAlignment) !void {
+        const info = try JPEG.JPEG.parseInfo(raw_jpeg);
+        const content_w: f32 = @floatFromInt(self.page_properties.getContentWidth());
+        const aspect: f32 = @as(f32, @floatFromInt(info.width)) / @as(f32, @floatFromInt(info.height));
+        const scale_x: f32 = content_w * width_percentage / 100.0;
+        const scale_y: f32 = scale_x / aspect;
+        const height: i32 = @as(i32, @intFromFloat(scale_y));
+
+        var x: i32 = 0;
+        switch (alignment) {
+            .LEFT => {
+                x = self.page_properties.getContentLeft();
+            },
+            .CENTERED => {
+                x = self.page_properties.getContentLeft() + self.page_properties.getContentWidth() / 2 - @as(i32, @intFromFloat(scale_x * 0.5));
+            },
+            .RIGHT => {
+                x = self.page_properties.getContentRight() - @as(i32, @intFromFloat(scale_x));
+            },
+        }
+
+        // check space and break page if needed
+        if (self.cursor.y - height - 4 < self.page_properties.getContentBottom()) {
+            try self.breakPage();
+        }
+
+        // add border
+        self.advanceCursor(2);
+        try self.writer.putImage(info, scale_x, scale_y, x, self.cursor.y - height);
+        self.advanceCursor(@intCast(height + 2));
     }
 
     pub fn writeRow(self: *PDFDocument, strings: []const []const u8) !void {

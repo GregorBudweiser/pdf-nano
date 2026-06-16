@@ -88,6 +88,16 @@ int32_t showPageNumbers(encoder_handle handle, uint32_t alignment, uint8_t fontS
 int32_t addText(encoder_handle handle, const char* text);
 
 /**
+ * Add image at current cursor position.
+ * 
+ * @param raw_jpeg raw bytes of jpeg image (no jpeg2000 or lossless support)
+ * @param len length of raw_jpeg array
+ * @param width percentage of page content, ignoring borders. 100 is the default and aligns with text.
+ * @param alignment controlls alignment of image shown
+ */
+int32_t addImage(encoder_handle handle, const uint8_t* raw_jpeg, uint32_t len, float width, uint32_t alignment);
+
+/**
  * Add horizontal line.
  *
  * @param thickness Line thickness

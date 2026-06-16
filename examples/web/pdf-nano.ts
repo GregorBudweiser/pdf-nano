@@ -117,6 +117,17 @@ export class PDFDocument {
         this.callH('finishTable');
     }
 
+    addImage(image: string | Uint8Array, width: number, alignment: TextAlignment) {
+        var u8_raw_data: Uint8Array = typeof image === "string"
+            ? u8_raw_data = Uint8Array.from(image, c => c.charCodeAt(0))
+            : u8_raw_data = image;
+
+        const ptr = this.alloc(u8_raw_data.length);
+        const mem = new Uint8Array(PDFDocument.memory.buffer, ptr, u8_raw_data.length);
+        mem.set(u8_raw_data);
+        this.callH('addImage', ptr, u8_raw_data.length, width, alignment);
+    }
+
     breakPage() {
         this.callH('breakPage');
     }

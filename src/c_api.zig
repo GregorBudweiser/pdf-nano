@@ -2,6 +2,7 @@ const std = @import("std");
 const PDFDocument = @import("./document.zig").PDFDocument;
 const PDFNano = @import("./document.zig");
 const PredefinedFonts = @import("font.zig").PredefinedFonts;
+const Jpeg = @import("./jpeg.zig");
 const arch = @import("builtin").target.cpu.arch;
 
 // switch allocator depending on target
@@ -71,6 +72,25 @@ export fn addText(doc: *PDFDocument, text: [*c]const u8) i32 {
         return 0;
     } else |_| {
         return -1;
+    }
+}
+
+export fn addImage(doc: *PDFDocument, raw_jpeg: [*]const u8, len: u32, width: f32, alignment: u32) i32 {
+    if (doc.addImage(raw_jpeg[0..len], width, @enumFromInt(alignment))) {
+        return 0;
+    } else |err| switch (err) {
+        Jpeg.JPEGError.NOT_A_JPEG => {
+            return -2;
+        },
+        Jpeg.JPEGError.TRUNCATED => {
+            return -3;
+        },
+        Jpeg.JPEGError.UNSUPPORTED => {
+            return -4;
+        },
+        else => {
+            return -1;
+        },
     }
 }
 

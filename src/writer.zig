@@ -2,6 +2,7 @@ const std = @import("std");
 const layout = @import("layouter.zig");
 const font = @import("font.zig");
 const testing = std.testing;
+const JPEGInfo = @import("jpeg.zig").JPEGInfo;
 
 /// PDF float rgb values
 pub const Color = struct {
@@ -25,6 +26,9 @@ pub const PDFWriter = struct {
     /// list of all pages written
     page_ids: std.array_list.Managed(usize),
 
+    /// list of images of current page
+    images: std.array_list.Managed(JPEGInfo),
+
     /// page tree object
     page_tree_id: usize = undefined,
 
@@ -33,6 +37,8 @@ pub const PDFWriter = struct {
 
     // font ids
     fonts: [font.predefined_fonts.len]usize = undefined,
+
+    allocator: std.mem.Allocator,
 
     /// Definition of a pdf stream object
     const StreamDef = struct {
@@ -63,12 +69,16 @@ pub const PDFWriter = struct {
             .buffer = std.array_list.Managed(u8).init(allocator),
             .i_ref_offsets = std.array_list.Managed(usize).init(allocator),
             .page_ids = std.array_list.Managed(usize).init(allocator),
+            .images = std.array_list.Managed(JPEGInfo).init(allocator),
+            .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *PDFWriter) void {
         self.buffer.deinit();
         self.i_ref_offsets.deinit();
+        self.page_ids.deinit();
+        self.images.deinit();
     }
 
     pub fn startDocument(self: *PDFWriter, page_width: u16, page_height: u16) !void {
@@ -117,6 +127,24 @@ pub const PDFWriter = struct {
             }
         }
         try self.append(") Tj\nET\n");
+    }
+
+    pub fn putImage(self: *PDFWriter, img: JPEGInfo, scale_x: f32, scale_y: f32, x: i32, y: i32) !void {
+        // store copy of image
+        try self.images.append(img);
+        var copy = &self.images.items[self.images.items.len - 1];
+        copy.raw = try self.allocator.dupe(u8, img.raw);
+        // if you add more than 2^32 images to a single page it's your fault :P
+        copy.ref_id = @intCast(self.images.items.len);
+
+        // insert matrix stuff
+        try self.appendFormatted("q\n{d} 0 0 {d} {d} {d} cm\n/Img{d} Do\nQ\n", .{
+            scale_x,
+            scale_y,
+            x,
+            y,
+            copy.ref_id,
+        });
     }
 
     pub fn putLine(self: *PDFWriter, w: f32, x0: i32, y0: i32, x1: i32, y1: i32) !void {
@@ -171,9 +199,16 @@ pub const PDFWriter = struct {
         try self.endStream(page.stream);
         try self.endObject();
 
+        var image_ids = std.array_list.Managed(usize).init(self.allocator);
+        defer image_ids.deinit();
+        for (self.images.items) |image| {
+            const image_id = try self.addImageObject(image);
+            try image_ids.append(image_id);
+        }
+
         // TODO: automate fonts ids..
         const page_id = try self.startObject();
-        const page_string =
+        const page_string_part1 =
             \\<<
             \\/Type /Page
             \\/Parent {d} 0 R
@@ -183,15 +218,64 @@ pub const PDFWriter = struct {
             \\  /F2 {d} 0 R
             \\  /F3 {d} 0 R
             \\ >>
+            \\ /XObject <<
+            \\
+        ;
+        const page_string_part2 =
+            \\ >>
             \\>>
             \\/MediaBox [0 0 {d} {d}]
             \\/Contents {d} 0 R
             \\>>
             \\
         ;
-        try self.appendFormatted(page_string, .{ page_tree_id, self.fonts[0], self.fonts[1], self.fonts[2], page.width, page.height, page.page_id });
+        try self.appendFormatted(page_string_part1, .{ page_tree_id, self.fonts[0], self.fonts[1], self.fonts[2] });
+
+        // image (xobject) entries
+        for (image_ids.items, self.images.items) |image_id, image| {
+            try self.appendFormatted(" /Img{d} {d} 0 R\n", .{ image.ref_id, image_id });
+        }
+
+        try self.appendFormatted(page_string_part2, .{ page.width, page.height, page.page_id });
         try self.endObject();
         try self.page_ids.append(page_id);
+
+        // clear list of images
+        for (self.images.items) |image| {
+            self.allocator.free(image.raw);
+        }
+        self.images.clearRetainingCapacity();
+    }
+
+    fn addImageObject(self: *PDFWriter, image_info: JPEGInfo) !usize {
+        const image_id = try self.startObject();
+        const color_spaces: [5][]const u8 = .{ "/INVALID", "/DeviceGray", "/INVALID", "/DeviceRGB", "/DeviceCMYK" };
+        const image_string =
+            \\<<
+            \\/Type /XObject
+            \\/Subtype /Image
+            \\/Width {d}
+            \\/Height {d}
+            \\/ColorSpace {s}
+            \\/BitsPerComponent {d}
+            \\/Filter /DCTDecode
+            \\/Interpolate true
+            \\/Length {d}
+            \\>>
+            \\stream
+            \\
+        ;
+        try self.appendFormatted(image_string, .{
+            image_info.width,
+            image_info.height,
+            color_spaces[@min(4, image_info.num_channels)],
+            image_info.bpp,
+            image_info.raw.len,
+        });
+        try self.append(image_info.raw);
+        try self.append("\nendstream\n");
+        try self.endObject();
+        return image_id;
     }
 
     fn writePageTree(self: *PDFWriter, page_ids: []const usize, page_tree_id: usize) !void {

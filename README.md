@@ -10,6 +10,7 @@ To keep the code/binary small only a minimal set of features have been and will 
 - Basic options for fonts, colors and alignment
 - Lines and tables (fixed layout, optionally repeat table header on new page)
 - Page numbers in footer
+- Jpeg Images (no Jpeg2000 or xl)
 
 Nice to have at some point:
 - Unify/improve handling of text/table styles
@@ -17,7 +18,7 @@ Nice to have at some point:
 
 Not on the todo list (due to code size):
 - TrueType fonts (if you need a small library you probably don't have space for fonts anyway)
-- Pictures such as jpg, png (this would require an image decoder + logic to encode into pdf's raster format)
+- Non-jpeg images (as only jpeg is natively supported)
 - Compression
 
 ### How to build
@@ -28,7 +29,8 @@ PDF-Nano is written in Zig, so you will need the Zig compiler. Then simply compi
 ### Build compatibility
 | PDF-Nano     | Zig                        |
 |--------------|----------------------------|
-| **v0.9.x**   | **v0.15.2**                |
+| **v0.10.x**  | **v0.15.2**                |
+| v0.9.x       | v0.15.2                    |
 | v0.8.x       | v0.15.x                    |
 | v0.7.0       | v0.15.x                    |
 | v0.6.0       | v0.14.x                    |
