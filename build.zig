@@ -25,6 +25,7 @@ pub fn build(b: *std.Build) void {
         exe.entry = .disabled;
         exe.rdynamic = true;
         exe.root_module.addImport("build_zig_zon", build_zig_zon);
+        exe.addIncludePath(b.path("./include/"));
         b.installArtifact(exe);
     } else {
         // pdf-nano library (c api/library for other languages)
@@ -38,6 +39,7 @@ pub fn build(b: *std.Build) void {
             }),
         });
         lib.root_module.addImport("build_zig_zon", build_zig_zon);
+        lib.addIncludePath(b.path("./include/"));
         b.installArtifact(lib);
 
         // root module for zig users

@@ -15,6 +15,8 @@ pub const Color = struct {
     b: f32,
 };
 
+pub const AllocOrNonUFT8Error: type = std.mem.Allocator.Error || error{InvalidUtf8};
+
 /// Low level pdf writer handling the pdf format specific stuff
 pub const PDFWriter = struct {
     /// pdf output buffer
@@ -81,7 +83,7 @@ pub const PDFWriter = struct {
         self.images.deinit();
     }
 
-    pub fn startDocument(self: *PDFWriter, page_width: u16, page_height: u16) !void {
+    pub fn startDocument(self: *PDFWriter, page_width: u16, page_height: u16) std.mem.Allocator.Error!void {
         _ = try self.createIRefID(); // use up objectId 0 and ignore it.
         try self.buffer.appendSlice("%PDF-1.6\n"); // write header
 
@@ -97,7 +99,7 @@ pub const PDFWriter = struct {
 
     /// Calling endDocument() "finishes" the document.
     /// After that, any changes to the pdf document will not generate a valid pdf file.
-    pub fn endDocument(self: *PDFWriter) !void {
+    pub fn endDocument(self: *PDFWriter) std.mem.Allocator.Error!void {
         try self.endPage(self.current_page, self.page_tree_id);
         try self.writePageTree(self.page_ids.items, self.page_tree_id);
         const catalog_id = try self.writeCatalog(self.page_tree_id);
@@ -105,12 +107,13 @@ pub const PDFWriter = struct {
         try self.writeTrailer(xref_offset, catalog_id);
     }
 
-    pub fn newPage(self: *PDFWriter, page_width: u16, page_height: u16) !void {
+    pub fn newPage(self: *PDFWriter, page_width: u16, page_height: u16) std.mem.Allocator.Error!void {
         try self.endPage(self.current_page, self.page_tree_id);
         self.current_page = try self.startPage(page_width, page_height);
     }
 
-    pub fn putText(self: *PDFWriter, text: []const u8, font_id: u16, font_size: u16, x: i32, y: i32) !void {
+    /// for now text must be unicode
+    pub fn putText(self: *PDFWriter, text: []const u8, font_id: u16, font_size: u16, x: i32, y: i32) AllocOrNonUFT8Error!void {
         try self.appendFormatted("BT\n/F{d} {d} Tf\n{d} {d} Td\n(", .{ font_id, font_size, x, y });
         var iter = (try std.unicode.Utf8View.init(text)).iterator();
         while (iter.nextCodepoint()) |code| {
@@ -129,7 +132,7 @@ pub const PDFWriter = struct {
         try self.append(") Tj\nET\n");
     }
 
-    pub fn putImage(self: *PDFWriter, img: JPEGInfo, scale_x: f32, scale_y: f32, x: i32, y: i32) !void {
+    pub fn putImage(self: *PDFWriter, img: JPEGInfo, scale_x: f32, scale_y: f32, x: i32, y: i32) std.mem.Allocator.Error!void {
         // store copy of image
         try self.images.append(img);
         var copy = &self.images.items[self.images.items.len - 1];
@@ -147,19 +150,19 @@ pub const PDFWriter = struct {
         });
     }
 
-    pub fn putLine(self: *PDFWriter, w: f32, x0: i32, y0: i32, x1: i32, y1: i32) !void {
+    pub fn putLine(self: *PDFWriter, w: f32, x0: i32, y0: i32, x1: i32, y1: i32) std.mem.Allocator.Error!void {
         try self.appendFormatted("{d:.3} w\n{d} {d} m\n{d} {d} l\nS\n", .{ w, x0, y0, x1, y1 });
     }
 
-    pub fn putRect(self: *PDFWriter, x: i32, y: i32, w: i32, h: i32) !void {
+    pub fn putRect(self: *PDFWriter, x: i32, y: i32, w: i32, h: i32) std.mem.Allocator.Error!void {
         try self.appendFormatted("{d} {d} {d} {d} re\nf\n", .{ x, y, w, h });
     }
 
-    pub fn setColor(self: *PDFWriter, color: Color) !void {
+    pub fn setColor(self: *PDFWriter, color: Color) std.mem.Allocator.Error!void {
         try self.appendFormatted("{d:.3} {d:.3} {d:.3} rg\n", .{ color.r, color.g, color.b });
     }
 
-    pub fn setStrokeColor(self: *PDFWriter, color: Color) !void {
+    pub fn setStrokeColor(self: *PDFWriter, color: Color) std.mem.Allocator.Error!void {
         try self.appendFormatted("{d:.3} {d:.3} {d:.3} RG\n", .{ color.r, color.g, color.b });
     }
 
@@ -171,7 +174,7 @@ pub const PDFWriter = struct {
         return getEncodedBytes(self);
     }
 
-    pub fn insertAtMarker(self: *PDFWriter, marker: usize, data: []const u8) !void {
+    pub fn insertAtMarker(self: *PDFWriter, marker: usize, data: []const u8) std.mem.Allocator.Error!void {
         try self.buffer.insertSlice(marker, data);
     }
 
@@ -182,20 +185,20 @@ pub const PDFWriter = struct {
         return self.page_ids.items.len + 1;
     }
 
-    fn writeCatalog(self: *PDFWriter, page_tree_id: usize) !usize {
+    fn writeCatalog(self: *PDFWriter, page_tree_id: usize) std.mem.Allocator.Error!usize {
         const catalog_id = try self.startObject();
         try self.appendFormatted("<<\n/Type /Catalog\n/Pages {d} 0 R\n>>\n", .{page_tree_id});
         try self.endObject();
         return catalog_id;
     }
 
-    fn startPage(self: *PDFWriter, page_width: u16, page_height: u16) !PageDef {
+    fn startPage(self: *PDFWriter, page_width: u16, page_height: u16) std.mem.Allocator.Error!PageDef {
         const page_id = try self.startObject();
         const stream = try self.startStream();
         return PageDef{ .stream = stream, .page_id = page_id, .width = page_width, .height = page_height };
     }
 
-    fn endPage(self: *PDFWriter, page: PageDef, page_tree_id: usize) !void {
+    fn endPage(self: *PDFWriter, page: PageDef, page_tree_id: usize) std.mem.Allocator.Error!void {
         try self.endStream(page.stream);
         try self.endObject();
 
@@ -247,7 +250,7 @@ pub const PDFWriter = struct {
         self.images.clearRetainingCapacity();
     }
 
-    fn addImageObject(self: *PDFWriter, image_info: JPEGInfo) !usize {
+    fn addImageObject(self: *PDFWriter, image_info: JPEGInfo) std.mem.Allocator.Error!usize {
         const image_id = try self.startObject();
         const color_spaces: [5][]const u8 = .{ "/INVALID", "/DeviceGray", "/INVALID", "/DeviceRGB", "/DeviceCMYK" };
         const image_string =
@@ -278,7 +281,7 @@ pub const PDFWriter = struct {
         return image_id;
     }
 
-    fn writePageTree(self: *PDFWriter, page_ids: []const usize, page_tree_id: usize) !void {
+    fn writePageTree(self: *PDFWriter, page_ids: []const usize, page_tree_id: usize) std.mem.Allocator.Error!void {
         try self.startObjectWithId(page_tree_id);
         try self.append("<<\n/Type /Pages\n/Kids [\n");
         for (page_ids) |pageId| {
@@ -288,7 +291,7 @@ pub const PDFWriter = struct {
         try self.endObject();
     }
 
-    fn writeXRef(self: *PDFWriter) !usize {
+    fn writeXRef(self: *PDFWriter) std.mem.Allocator.Error!usize {
         const xref_offset = self.getEncodedBytes();
         try self.buffer.appendSlice("xref\n");
         const N = self.i_ref_offsets.items.len;
@@ -303,7 +306,7 @@ pub const PDFWriter = struct {
         return xref_offset;
     }
 
-    fn writeTrailer(self: *PDFWriter, xrefOffset: usize, catalogId: usize) !void {
+    fn writeTrailer(self: *PDFWriter, xrefOffset: usize, catalogId: usize) std.mem.Allocator.Error!void {
         const trailer_string =
             \\trailer
             \\<<
@@ -319,7 +322,7 @@ pub const PDFWriter = struct {
 
     // pdf-specific utility functions ========================================================================
 
-    fn startStream(self: *PDFWriter) !StreamDef {
+    fn startStream(self: *PDFWriter) std.mem.Allocator.Error!StreamDef {
         try self.append("<< /Length ");
         const length_start = self.getEncodedBytes();
         try self.append("          "); // insert rendered length here; avoids move
@@ -330,24 +333,24 @@ pub const PDFWriter = struct {
         return StreamDef{ .length_start = length_start, .stream_start = stream_start };
     }
 
-    fn endStream(self: *PDFWriter, stream: StreamDef) !void {
+    fn endStream(self: *PDFWriter, stream: StreamDef) std.mem.Allocator.Error!void {
         const stream_end = self.getEncodedBytes();
         try self.replaceFormatted(32, stream.length_start, "{d}", .{stream_end - stream.stream_start});
         try self.append("endstream\n");
     }
 
-    fn startObject(self: *PDFWriter) !usize {
+    fn startObject(self: *PDFWriter) std.mem.Allocator.Error!usize {
         const i_ref_id = try self.createIRefID();
         try self.appendFormatted("{d} 0 obj\n", .{i_ref_id});
         return i_ref_id;
     }
 
-    fn startObjectWithId(self: *PDFWriter, iRefId: usize) !void {
+    fn startObjectWithId(self: *PDFWriter, iRefId: usize) std.mem.Allocator.Error!void {
         self.i_ref_offsets.items[iRefId] = self.getEncodedBytes();
         try self.appendFormatted("{d} 0 obj\n", .{iRefId});
     }
 
-    fn endObject(self: *PDFWriter) !void {
+    fn endObject(self: *PDFWriter) std.mem.Allocator.Error!void {
         try self.append("endobj\n");
     }
 
@@ -355,7 +358,7 @@ pub const PDFWriter = struct {
         return self.buffer.items.len;
     }
 
-    fn createIRefID(self: *PDFWriter) !usize {
+    fn createIRefID(self: *PDFWriter) std.mem.Allocator.Error!usize {
         const i_ref_id = self.i_ref_offsets.items.len;
         try self.i_ref_offsets.append(self.getEncodedBytes());
         return i_ref_id;
@@ -363,18 +366,19 @@ pub const PDFWriter = struct {
 
     // pdf-agnostic utility functions ===============================================================
 
-    fn appendFormatted(self: *PDFWriter, comptime format: []const u8, args: anytype) !void {
+    fn appendFormatted(self: *PDFWriter, comptime format: []const u8, args: anytype) std.mem.Allocator.Error!void {
         try self.buffer.writer().print(format, args);
     }
 
-    fn replaceFormatted(self: *PDFWriter, comptime size: u32, pos: usize, comptime format: []const u8, args: anytype) !void {
+    // it's the programmer's responsibility to pick the param 'size' large enough such that printing the formated string is guaranteed to fit into the buffer (of size 'size')
+    fn replaceFormatted(self: *PDFWriter, comptime size: u32, pos: usize, comptime format: []const u8, args: anytype) std.mem.Allocator.Error!void {
         var string_buffer = [_]u8{0} ** size;
         var buffered_writer = std.io.FixedBufferStream([]u8){ .pos = 0, .buffer = &string_buffer };
-        try buffered_writer.writer().print(format, args);
+        buffered_writer.writer().print(format, args) catch unreachable;
         try self.buffer.replaceRange(pos, buffered_writer.pos, string_buffer[0..buffered_writer.pos]);
     }
 
-    fn append(self: *PDFWriter, string: []const u8) !void {
+    fn append(self: *PDFWriter, string: []const u8) std.mem.Allocator.Error!void {
         try self.buffer.appendSlice(string);
     }
 };

@@ -1,5 +1,6 @@
 const std = @import("std");
 const PDFWriter = @import("writer.zig").PDFWriter;
+const AllocOrNonUFT8Error = @import("writer.zig").AllocOrNonUFT8Error;
 const Color = @import("writer.zig").Color;
 const Font = @import("font.zig").Font;
 const PredefinedFonts = @import("font.zig").PredefinedFonts;
@@ -61,7 +62,7 @@ pub const PDFDocument = struct {
 
     /// Calling render() "finishes" the document.
     /// After that, any changes to the pdf document will not generate a valid pdf file.
-    pub fn render(self: *PDFDocument) ![]const u8 {
+    pub fn render(self: *PDFDocument) std.mem.Allocator.Error![]const u8 {
         try self.writer.endDocument();
         return self.writer.buffer.items;
     }
@@ -72,7 +73,7 @@ pub const PDFDocument = struct {
         return self.writer.buffer.items.len;
     }
 
-    pub fn setupDocument(self: *PDFDocument, format: PageFormat, orientation: PageOrientation) !void {
+    pub fn setupDocument(self: *PDFDocument, format: PageFormat, orientation: PageOrientation) std.mem.Allocator.Error!void {
         self.page_properties.width = formats[@intFromEnum(format)][0 + @intFromEnum(orientation)];
         self.page_properties.height = formats[@intFromEnum(format)][1 - @intFromEnum(orientation)];
         try self.writer.startDocument(self.page_properties.width, self.page_properties.height);
@@ -80,14 +81,14 @@ pub const PDFDocument = struct {
         self.setDefaultStyle();
     }
 
-    pub fn showPageNumbers(self: *PDFDocument, alignment: TextAlignment, font_size: u8) !void {
+    pub fn showPageNumbers(self: *PDFDocument, alignment: TextAlignment, font_size: u8) AllocOrNonUFT8Error!void {
         self.page_properties.footer = .PAGE_NUMBER;
         self.page_properties.footer_style.alignment = alignment;
         self.page_properties.footer_style.font_size = font_size;
         try self.addFooter();
     }
 
-    pub fn breakPage(self: *PDFDocument) !void {
+    pub fn breakPage(self: *PDFDocument) std.mem.Allocator.Error!void {
         try self.writer.newPage(self.page_properties.width, self.page_properties.height);
         try self.addFooter();
         self.resetCursorPos();
@@ -119,7 +120,7 @@ pub const PDFDocument = struct {
         self.cursor.style.fill_color = Color{ .r = r, .g = g, .b = b };
     }
 
-    pub fn hr(self: *PDFDocument, thickness: f32) !void {
+    pub fn hr(self: *PDFDocument, thickness: f32) std.mem.Allocator.Error!void {
         try self.writer.setStrokeColor(self.cursor.style.stroke_color);
         try self.writer.putLine(thickness, self.page_properties.getContentLeft(), self.cursor.y, self.page_properties.getContentRight(), self.cursor.y);
     }
@@ -128,7 +129,7 @@ pub const PDFDocument = struct {
         self.cursor.style.alignment = alignment;
     }
 
-    pub fn addText(self: *PDFDocument, text: []const u8) !void {
+    pub fn addText(self: *PDFDocument, text: []const u8) AllocOrNonUFT8Error!void {
         var layouter = try Layouter.init(
             text,
             self.page_properties.getContentLeft(),
@@ -150,7 +151,7 @@ pub const PDFDocument = struct {
         self.cursor.y = @intCast(y);
     }
 
-    pub fn addImage(self: *PDFDocument, raw_jpeg: []const u8, width_percentage: f32, alignment: TextAlignment) !void {
+    pub fn addImage(self: *PDFDocument, raw_jpeg: []const u8, width_percentage: f32, alignment: TextAlignment) (std.mem.Allocator.Error || JPEG.JPEGError)!void {
         const info = try JPEG.JPEG.parseInfo(raw_jpeg);
         const content_w: f32 = @floatFromInt(self.page_properties.getContentWidth());
         const aspect: f32 = @as(f32, @floatFromInt(info.width)) / @as(f32, @floatFromInt(info.height));
@@ -182,7 +183,7 @@ pub const PDFDocument = struct {
         self.advanceCursor(@intCast(height + 2));
     }
 
-    pub fn writeRow(self: *PDFDocument, strings: []const []const u8) !void {
+    pub fn writeRow(self: *PDFDocument, strings: []const []const u8) AllocOrNonUFT8Error!void {
         try self.writer.setStrokeColor(self.cursor.style.stroke_color);
         for (self.table.getCells(), strings) |*cell, string| {
             cell.remaining_text = string;
@@ -211,7 +212,7 @@ pub const PDFDocument = struct {
     /// Can only be called after startTable() and before first writeRow() for a given table
     /// Sets and immediately renders table headers
     /// Multiple calls to setTableHeaders() per table is not supported
-    pub fn setTableHeaders(self: *PDFDocument, headers: []const []const u8, repeat_per_page: bool) !void {
+    pub fn setTableHeaders(self: *PDFDocument, headers: []const []const u8, repeat_per_page: bool) AllocOrNonUFT8Error!void {
         try self.table.setHeaders(headers, repeat_per_page);
         try self.table.writeHeaderRow(self);
     }
@@ -220,13 +221,13 @@ pub const PDFDocument = struct {
         self.table.setHeaderStyle(style);
     }
 
-    pub inline fn finishTable(self: *PDFDocument) !void {
+    pub inline fn finishTable(self: *PDFDocument) std.mem.Allocator.Error!void {
         self.cursor.y = try self.table.finishTable(&self.writer);
     }
 
     /// Calling save() "finishes" the document by calling render().
     /// After that, any changes to the pdf document will not generate a valid pdf file.
-    pub fn save(doc: *PDFDocument, filename: []const u8) !void {
+    pub fn save(doc: *PDFDocument, filename: []const u8) (std.mem.Allocator.Error || JPEG.JPEGError || std.fs.File.OpenError || error{WriteFailed})!void {
         const out_file = try std.fs.cwd().createFile(filename, .{});
         defer out_file.close();
         var buffer: [1024]u8 = undefined;
@@ -251,19 +252,29 @@ pub const PDFDocument = struct {
         };
     }
 
-    fn addFooter(self: *PDFDocument) !void {
+    fn addFooter(self: *PDFDocument) std.mem.Allocator.Error!void {
         switch (self.page_properties.footer) {
             .PAGE_NUMBER => {
                 var buf: [32]u8 = undefined;
-                const text = try std.fmt.bufPrint(&buf, "{d}", .{self.writer.getCurrentPageNumber()});
-                var layouter = try Layouter.init(
+                const text = std.fmt.bufPrint(&buf, "{d}", .{self.writer.getCurrentPageNumber()}) catch unreachable;
+                var layouter = Layouter.init(
                     text,
                     self.page_properties.getContentLeft(),
                     self.page_properties.getContentWidth(),
                     self.page_properties.footer_style,
-                );
+                ) catch |err| switch (err) {
+                    error.InvalidUtf8 => unreachable,
+                    error.OutOfMemory => return error.OutOfMemory,
+                };
                 const someOffset = 5; // TODO: use font metrics to vertical align properly
-                try layouter.layoutLine(layouter.nextLine() orelse unreachable, self.page_properties.getContentBottom() - self.page_properties.footer_style.font_size - someOffset, &self.writer);
+                layouter.layoutLine(
+                    layouter.nextLine() orelse unreachable,
+                    self.page_properties.getContentBottom() - self.page_properties.footer_style.font_size - someOffset,
+                    &self.writer,
+                ) catch |err| switch (err) {
+                    error.InvalidUtf8 => unreachable,
+                    error.OutOfMemory => return error.OutOfMemory,
+                };
             },
             else => {
                 return;

@@ -5,6 +5,10 @@ const PredefinedFonts = @import("font.zig").PredefinedFonts;
 const Jpeg = @import("./jpeg.zig");
 const arch = @import("builtin").target.cpu.arch;
 
+const api_errors = @cImport({
+    @cInclude("pdf-nano-errors.h");
+});
+
 // switch allocator depending on target
 const allocator: std.mem.Allocator = if (arch.isWasm()) std.heap.wasm_allocator else std.heap.page_allocator;
 
@@ -17,7 +21,7 @@ export fn createEncoder(format: u32, orientation: u32) usize {
 }
 
 /// helper function for createEncoder
-fn createAndInit(format: u32, orientation: u32) !*PDFDocument {
+fn createAndInit(format: u32, orientation: u32) std.mem.Allocator.Error!*PDFDocument {
     var writer = try allocator.create(PDFDocument);
     writer.* = PDFDocument.init(allocator);
     try writer.setupDocument(@enumFromInt(format), @enumFromInt(orientation));
@@ -32,8 +36,9 @@ export fn freeEncoder(doc: *PDFDocument) void {
 export fn showPageNumbers(doc: *PDFDocument, alignment: u32, font_size: u8) i32 {
     if (doc.showPageNumbers(@enumFromInt(alignment), font_size)) {
         return 0;
-    } else |_| {
-        return -1;
+    } else |err| switch (err) {
+        error.OutOfMemory => return api_errors.OUT_OF_MEMORY,
+        error.InvalidUtf8 => return api_errors.NON_UTF8_TEXT,
     }
 }
 
@@ -62,16 +67,17 @@ export fn advanceCursor(doc: *PDFDocument, y: u16) void {
 export fn addHorizontalLine(doc: *PDFDocument, thickness: f32) i32 {
     if (doc.hr(thickness)) {
         return 0;
-    } else |_| {
-        return -1;
+    } else |err| switch (err) {
+        error.OutOfMemory => return api_errors.OUT_OF_MEMORY,
     }
 }
 
 export fn addText(doc: *PDFDocument, text: [*c]const u8) i32 {
     if (doc.addText(std.mem.span(text))) {
         return 0;
-    } else |_| {
-        return -1;
+    } else |err| switch (err) {
+        error.OutOfMemory => return api_errors.OUT_OF_MEMORY,
+        error.InvalidUtf8 => return api_errors.NON_UTF8_TEXT,
     }
 }
 
@@ -80,16 +86,16 @@ export fn addImage(doc: *PDFDocument, raw_jpeg: [*]const u8, len: u32, width: f3
         return 0;
     } else |err| switch (err) {
         Jpeg.JPEGError.NOT_A_JPEG => {
-            return -2;
+            return api_errors.J_NOT_A_JPEG;
         },
         Jpeg.JPEGError.TRUNCATED => {
-            return -3;
+            return api_errors.J_TRUNCATED;
         },
         Jpeg.JPEGError.UNSUPPORTED => {
-            return -4;
+            return api_errors.J_UNSUPPORTED;
         },
         else => {
-            return -1;
+            return api_errors.OUT_OF_MEMORY;
         },
     }
 }
@@ -120,16 +126,17 @@ export fn writeRow(doc: *PDFDocument, texts: *[16]usize, num_columns: u8) i32 {
 
     if (doc.writeRow(cols[0..num_columns])) {
         return 0;
-    } else |_| {
-        return -1;
+    } else |err| switch (err) {
+        error.OutOfMemory => return api_errors.OUT_OF_MEMORY,
+        error.InvalidUtf8 => return api_errors.NON_UTF8_TEXT,
     }
 }
 
 export fn finishTable(doc: *PDFDocument) i32 {
     if (doc.finishTable()) {
         return 0;
-    } else |_| {
-        return -1;
+    } else |err| switch (err) {
+        error.OutOfMemory => return api_errors.OUT_OF_MEMORY,
     }
 }
 
@@ -154,8 +161,9 @@ export fn setTableHeaders(doc: *PDFDocument, headers: *[16]usize, num_columns: u
 
     if (doc.setTableHeaders(cols[0..num_columns], repeat_header)) {
         return 0;
-    } else |_| {
-        return -1;
+    } else |err| switch (err) {
+        error.OutOfMemory => return api_errors.OUT_OF_MEMORY,
+        error.InvalidUtf8 => return api_errors.NON_UTF8_TEXT,
     }
 }
 

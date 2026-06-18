@@ -3,6 +3,7 @@ const font = @import("font.zig");
 const unicode = @import("std").unicode;
 const PageProperties = @import("page_properties.zig").PageProperties;
 const PDFWriter = @import("writer.zig").PDFWriter;
+const AllocOrNonUFT8Error = @import("writer.zig").AllocOrNonUFT8Error;
 const Style = @import("document.zig").Style;
 const Color = @import("writer.zig").Color;
 
@@ -32,7 +33,7 @@ pub const Layouter = struct {
     };
 
     /// @param: columnWidth in points (1/72th inch)
-    pub fn init(text: []const u8, column_start: u16, column_width: u16, style: Style) !Layouter {
+    pub fn init(text: []const u8, column_start: u16, column_width: u16, style: Style) AllocOrNonUFT8Error!Layouter {
         const iter = (try unicode.Utf8View.init(text)).iterator();
         return Layouter{
             .pos = 0,
@@ -44,7 +45,7 @@ pub const Layouter = struct {
         };
     }
 
-    pub fn layoutLine(self: *Layouter, line: []const u8, y: i32, writer: *PDFWriter) !void {
+    pub fn layoutLine(self: *Layouter, line: []const u8, y: i32, writer: *PDFWriter) AllocOrNonUFT8Error!void {
         switch (self.style.alignment) {
             .RIGHT => {
                 const x = @as(usize, @intCast(self.x)) + self.width / self.style.font.units_per_em - try self.getLineLength(line) / self.style.font.units_per_em;
@@ -64,7 +65,7 @@ pub const Layouter = struct {
     /// length of the line in current font's units per em
     /// ignores whitespace characters at the end of the line/string
     /// by design no whitespace should be at the beginning of the line/string
-    fn getLineLength(self: *const Layouter, line: []const u8) !usize {
+    fn getLineLength(self: *const Layouter, line: []const u8) AllocOrNonUFT8Error!usize {
         var current_width: usize = 0;
         var trailing_whitespace: usize = 0;
         var iter = (try unicode.Utf8View.init(line)).iterator();

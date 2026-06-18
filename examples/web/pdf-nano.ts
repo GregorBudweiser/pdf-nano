@@ -190,8 +190,9 @@ export class PDFDocument {
 
     private call(functionName: string, ...args: any[]): any {
         const result = (<any>PDFDocument.wasmInstance.exports[functionName])(...args);
-        if (result == -1) {
-            throw "Error while generating PDF @" + functionName; 
+        if (result < 0) {
+            // see <pdf-nano-repo>/include/pdf-nano-errors.h for error code meaning
+            throw "Error while generating PDF @" + functionName + "; code = " + result; 
         }
         return result;
     }

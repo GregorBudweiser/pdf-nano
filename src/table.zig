@@ -1,4 +1,5 @@
 const PDFWriter = @import("writer.zig").PDFWriter;
+const AllocOrNonUFT8Error = @import("writer.zig").AllocOrNonUFT8Error;
 const Color = @import("writer.zig").Color;
 const std = @import("std");
 const PDFDocument = @import("document.zig").PDFDocument;
@@ -56,7 +57,7 @@ pub const Table = struct {
         self.header_style = style;
     }
 
-    pub fn setHeaders(self: *Table, headers: []const []const u8, repeat_per_page: bool) !void {
+    pub fn setHeaders(self: *Table, headers: []const []const u8, repeat_per_page: bool) std.mem.Allocator.Error!void {
         self.repeat = repeat_per_page;
         self.headers.clearAndFree();
         for (headers) |header| {
@@ -88,7 +89,7 @@ pub const Table = struct {
         self.width = currentX - x;
     }
 
-    pub fn writeHeaderRow(self: *Table, doc: *PDFDocument) !void {
+    pub fn writeHeaderRow(self: *Table, doc: *PDFDocument) AllocOrNonUFT8Error!void {
         if (!try self.canFitNextRow(doc)) {
             return;
         }
@@ -115,7 +116,7 @@ pub const Table = struct {
         try doc.writer.insertAtMarker(marker, writer.buffer.items);
     }
 
-    pub fn writeRow(self: *Table, doc: *PDFDocument) !void {
+    pub fn writeRow(self: *Table, doc: *PDFDocument) AllocOrNonUFT8Error!void {
         if (!try self.canFitNextRow(doc)) {
             return;
         }
@@ -160,7 +161,7 @@ pub const Table = struct {
 
     /// assumes finishRow() was called before
     /// @returns y end-coordinate of table bounds
-    pub fn finishTable(self: *Table, writer: *PDFWriter) !u16 {
+    pub fn finishTable(self: *Table, writer: *PDFWriter) std.mem.Allocator.Error!u16 {
         // top
         try writer.putLine(self.line_width, self.x, self.current_row_y, self.x + self.width, self.current_row_y);
 
@@ -173,17 +174,17 @@ pub const Table = struct {
         return self.current_row_y;
     }
 
-    fn canFitNextRow(self: *const Table, doc: *PDFDocument) !bool {
+    fn canFitNextRow(self: *const Table, doc: *PDFDocument) AllocOrNonUFT8Error!bool {
         const layouter = try Layouter.init("", self.padding, 100, doc.cursor.style);
         const y: i32 = self.current_row_y - layouter.getLineHeight();
         return y + layouter.getLineGap() - 2 * self.padding >= doc.page_properties.getContentBottom();
     }
 
-    fn writeCell(self: *Table, doc: *PDFDocument, cell: *Cell, writer: *PDFWriter) !void {
+    fn writeCell(self: *Table, doc: *PDFDocument, cell: *Cell, writer: *PDFWriter) AllocOrNonUFT8Error!void {
         try self.writeCellWithStyle(doc, cell, writer, doc.cursor.style);
     }
 
-    fn writeCellWithStyle(self: *Table, doc: *PDFDocument, cell: *Cell, writer: *PDFWriter, style: Style) !void {
+    fn writeCellWithStyle(self: *Table, doc: *PDFDocument, cell: *Cell, writer: *PDFWriter, style: Style) AllocOrNonUFT8Error!void {
         var remaining_text = cell.remaining_text;
         var layouter = try Layouter.init(remaining_text, cell.x + self.padding, cell.width - 2 * self.padding, style);
         var y: i32 = self.current_row_y;
@@ -206,7 +207,7 @@ pub const Table = struct {
     }
 
     /// renders bottom line of current row, computes and updates total height info
-    fn finishRow(self: *Table, writer: *PDFWriter) !void {
+    fn finishRow(self: *Table, writer: *PDFWriter) std.mem.Allocator.Error!void {
         try writer.putLine(self.line_width, self.x, self.current_row_y, self.x + self.width, self.current_row_y);
         var max_height: u16 = 0;
         for (self.getCells()) |cell| {

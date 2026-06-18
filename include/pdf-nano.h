@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdint.h>
 #include <unistd.h>
 
@@ -25,11 +27,18 @@ enum TextAlignment {
     RIGHT
 };
 
+/**
+ * Get version string
+ *
+ * @returns version as null-terminated string
+ */
 const char* getVersion();
 
 /**
  * @param format PageFormat enum
  * @param orientation PageOrientation enum
+ *
+ * @returns created handle or null pointer on failure
  */
 encoder_handle createEncoder(uint32_t format, uint32_t orientation);
 
@@ -43,11 +52,15 @@ void freeEncoder(encoder_handle handle);
  * Should only be called once.
  *
  * See also: size().
+ *
+ * @returns pointer to (binary) PDF data
  */
-const char* render(encoder_handle handle);
+const unsigned char* render(encoder_handle handle);
 
 /**
  * Get size of rendered data. This is only valid after render() has been called.
+ *
+ * @returns size in bytes
  */
 size_t size(encoder_handle handle);
 
@@ -77,6 +90,8 @@ void setFontSize(encoder_handle handle, uint8_t size);
  *
  * @param alignment Controlls alignment of page numbers shown
  * @param fontSize Font size of page numbers in dots
+ *
+ * @returns zero on success, error code on failure (see pdf-nano-errors.h)
  */
 int32_t showPageNumbers(encoder_handle handle, uint32_t alignment, uint8_t fontSize);
 
@@ -84,6 +99,8 @@ int32_t showPageNumbers(encoder_handle handle, uint32_t alignment, uint8_t fontS
  * Add text at current cursor position.
  *
  * @param text Unicode text to be added. Non latin-1 characters won't be displayed correctly.
+ *
+ * @returns zero on success, error code on failure (see pdf-nano-errors.h)
  */
 int32_t addText(encoder_handle handle, const char* text);
 
@@ -94,6 +111,8 @@ int32_t addText(encoder_handle handle, const char* text);
  * @param len length of raw_jpeg array
  * @param width percentage of page content, ignoring borders. 100 is the default and aligns with text.
  * @param alignment controlls alignment of image shown
+ *
+ * @returns zero on success, error code on failure (see pdf-nano-errors.h)
  */
 int32_t addImage(encoder_handle handle, const uint8_t* raw_jpeg, uint32_t len, float width, uint32_t alignment);
 
@@ -109,6 +128,8 @@ int32_t addHorizontalLine(encoder_handle handle, float thickness);
  *
  * @param colunmWidths pointer to array of table withds in dots
  * @param numColumns number of elements in columnWidths array
+ *
+ * @returns zero on success, error code on failure (see pdf-nano-errors.h)
  */
 void startTable(encoder_handle handle, int16_t* columnWidths, uint8_t numColumns);
 
@@ -118,6 +139,8 @@ void startTable(encoder_handle handle, int16_t* columnWidths, uint8_t numColumns
  * @param texts Pointer to array of strings to be rendered
  * @param numColumns Size of texts array
  * @param repeatHeader Controlls if table header should be repeated if table spills onto a new page.
+ *
+ * @returns zero on success, error code on failure (see pdf-nano-errors.h)
  */
 int32_t setTableHeaders(encoder_handle handle, const char** texts, uint8_t numColumns, uint8_t repeatHeader);
 
@@ -126,16 +149,22 @@ int32_t setTableHeaders(encoder_handle handle, const char** texts, uint8_t numCo
  *
  * @param texts Pointer to array of strings to be rendered
  * @param numColumns Size of texts array
+ *
+ * @returns zero on success, error code on failure (see pdf-nano-errors.h)
  */
 int32_t writeRow(encoder_handle handle, const char** texts, uint8_t numColumns);
 
 /**
  * Finish current table object. Should only be called after startTable().
+ *
+ * @returns zero on success, error code on failure (see pdf-nano-errors.h)
  */
 int32_t finishTable(encoder_handle handle);
 
 /**
  * Add a new page and move cursor to top of the new page.
+ *
+ * @returns zero on success, error code on failure (see pdf-nano-errors.h)
  */
 int32_t breakPage(encoder_handle handle);
 
@@ -173,7 +202,9 @@ void setStrokeColor(encoder_handle handle, float r, float g, float b);
 
 /**
  * Save document to a file under given name.
- * 
+ *
  * @param filename name of output file
+ *
+ * @returns zero on success, error code on failure (see pdf-nano-errors.h)
  */
 int32_t saveAs(encoder_handle handle, const char* filename);

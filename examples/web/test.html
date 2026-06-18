@@ -293,6 +293,7 @@
                 call(functionName, ...args) {
                     const result = (PDFDocument.wasmInstance.exports[functionName])(...args);
                     if (result < 0) {
+                        // see <pdf-nano-repo>/include/pdf-nano-errors.h for error code meaning
                         throw "Error while generating PDF @" + functionName + "; code = " + result; 
                     }
                     return result;
