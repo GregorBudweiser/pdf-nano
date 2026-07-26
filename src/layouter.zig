@@ -69,10 +69,12 @@ pub const Layouter = struct {
         var current_width: usize = 0;
         var trailing_whitespace: usize = 0;
         var iter = (try unicode.Utf8View.init(line)).iterator();
-        while (iter.nextCodepoint()) |char| {
-            current_width += charWidth(char, self.style);
-            if (char < 0x100 and std.ascii.isWhitespace(@intCast(char))) {
-                trailing_whitespace += charWidth(char, self.style);
+        while (iter.nextCodepoint()) |code_point| {
+            const cp_width = charWidth(code_point, self.style);
+            current_width += cp_width;
+            // also treat disallowed chars as trailing whitespace in this context
+            if ((code_point < 0x100 and std.ascii.isWhitespace(@intCast(code_point))) or !PDFWriter.isAllowedCodePointWinAnsi(code_point)) {
+                trailing_whitespace += cp_width;
             } else {
                 trailing_whitespace = 0;
             }
@@ -163,11 +165,11 @@ pub const Layouter = struct {
 
         var split: usize = 0;
         var last_pos: usize = pos; // position before current character/codepoint
-        while (self.utf8_iter.nextCodepoint()) |char| {
-            current_width += charWidth(char, self.style);
+        while (self.utf8_iter.nextCodepoint()) |code_point| {
+            current_width += charWidth(code_point, self.style);
 
             // natural split point
-            if (char == '_' or char == '.' or char == '-') {
+            if (code_point == '_' or code_point == '.' or code_point == '-') {
                 split = self.utf8_iter.i;
             }
 
@@ -185,9 +187,13 @@ pub const Layouter = struct {
         return self.text[pos..split];
     }
 
-    fn charWidth(char: u21, style: Style) u16 {
-        if (char < style.font.glyph_advances.len) {
-            return style.font.glyph_advances[char] * style.font_size;
+    fn charWidth(code_point: u21, style: Style) u16 {
+        if (!PDFWriter.isAllowedCodePointWinAnsi(code_point)) {
+            return 0;
+        }
+
+        if (code_point < style.font.glyph_advances.len) {
+            return style.font.glyph_advances[code_point] * style.font_size;
         } else {
             return style.font.max * style.font_size;
         }

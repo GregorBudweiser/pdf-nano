@@ -112,24 +112,34 @@ pub const PDFWriter = struct {
         self.current_page = try self.startPage(page_width, page_height);
     }
 
-    /// for now text must be unicode
+    /// for now input text must be utf-8
     pub fn putText(self: *PDFWriter, text: []const u8, font_id: u16, font_size: u16, x: i32, y: i32) AllocOrNonUFT8Error!void {
         try self.appendFormatted("BT\n/F{d} {d} Tf\n{d} {d} Td\n(", .{ font_id, font_size, x, y });
         var iter = (try std.unicode.Utf8View.init(text)).iterator();
-        while (iter.nextCodepoint()) |code| {
-            // TODO: innermost loop.. optimize this..
-            if (code == '(' or code == ')' or code == '\\' or code == '\t') {
-                try self.buffer.append('\\');
+        while (iter.nextCodepoint()) |code_point| {
+            if (!isAllowedCodePointWinAnsi(code_point)) {
+                continue;
             }
 
-            if (code < 128) {
-                try self.buffer.append(@intCast(code));
-            } else {
-                // note: we set font to WinAnsiEncoding.. seems to be utf-16 so this works for all 2-byte characters
-                try self.appendFormatted("\\{o:3}", .{code});
+            if (code_point == '(' or code_point == ')' or code_point == '\\') {
+                try self.buffer.append('\\');
             }
+            try self.buffer.append(@intCast(code_point));
         }
         try self.append(") Tj\nET\n");
+    }
+
+    /// the pdf spec does not define how certain code points / characters shall be rendered (including tabs)
+    /// therefore we simply filter them out to get a consistent output across different pdf viewers
+    pub fn isAllowedCodePointWinAnsi(code_point: u21) bool {
+        switch (code_point) {
+            // unused win-ansi chars
+            0x81, 0x8D, 0x8F, 0x90, 0x9D => return false,
+            // only control character that we allow (because we handle it explicitly)
+            '\n' => return true,
+            // generally disallow control characters (undefined behaviour w.r.t. to pdf viewers)
+            else => return code_point > 0x1F and code_point < 0x100,
+        }
     }
 
     pub fn putImage(self: *PDFWriter, img: JPEGInfo, scale_x: f32, scale_y: f32, x: i32, y: i32) std.mem.Allocator.Error!void {

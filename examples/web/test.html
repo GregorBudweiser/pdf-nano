@@ -13,7 +13,7 @@
                 
                 
                 if (wasmString == "") {
-                    document.getElementById("version").innerHTML = "No wasm file. See this page's source for deails!";
+                    document.getElementById("version").innerHTML = "No wasm file. See this page's source for details!";
                     document.getElementById("myButton").style.visibility = 'hidden';
                 } else {
                     await PDFDocument.loadWasm(wasmString);
