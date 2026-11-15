@@ -58,15 +58,27 @@ pub const predefined_fonts = [_]Font{
         .max = max(advances_courier),
         .glyph_advances = advances_courier,
     },
+    .{
+        .id = 4,
+        .name = "Courier-Bold",
+        .advance = 1705,
+        .descent = 615,
+        .gap = 0,
+        .units_per_em = 2048,
+        .max = max(advances_courier),
+        .glyph_advances = advances_courier,
+    },
 };
 
 pub const PredefinedFonts = struct {
     pub const helvetica_regular: *const Font = &predefined_fonts[0];
     pub const helvetica_bold: *const Font = &predefined_fonts[1];
     pub const courier_regular: *const Font = &predefined_fonts[2];
+    pub const courier_bold: *const Font = &predefined_fonts[3];
 };
 
 fn max(values: []const u16) u16 {
+    @setEvalBranchQuota(4000);
     var m: u16 = 0;
     for (values) |value| {
         m = @max(m, value);

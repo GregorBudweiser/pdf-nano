@@ -19,7 +19,7 @@ pub const Table = struct {
         remaining_text: []const u8 = undefined,
     };
 
-    columns: [MAX_COL]Cell = [1]Cell{Cell{}} ** MAX_COL,
+    columns: [MAX_COL]Cell = @splat(Cell{}),
     numCols: u8 = undefined,
     current_column: u8 = undefined,
     current_row_y: u16 = undefined,

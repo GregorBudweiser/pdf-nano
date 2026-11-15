@@ -230,6 +230,7 @@ pub const PDFWriter = struct {
             \\  /F1 {d} 0 R
             \\  /F2 {d} 0 R
             \\  /F3 {d} 0 R
+            \\  /F4 {d} 0 R
             \\ >>
             \\ /XObject <<
             \\
@@ -242,7 +243,7 @@ pub const PDFWriter = struct {
             \\>>
             \\
         ;
-        try self.appendFormatted(page_string_part1, .{ page_tree_id, self.fonts[0], self.fonts[1], self.fonts[2] });
+        try self.appendFormatted(page_string_part1, .{ page_tree_id, self.fonts[0], self.fonts[1], self.fonts[2], self.fonts[3] });
 
         // image (xobject) entries
         for (image_ids.items, self.images.items) |image_id, image| {
@@ -377,15 +378,16 @@ pub const PDFWriter = struct {
     // pdf-agnostic utility functions ===============================================================
 
     fn appendFormatted(self: *PDFWriter, comptime format: []const u8, args: anytype) std.mem.Allocator.Error!void {
-        try self.buffer.writer().print(format, args);
+        const s = try std.fmt.allocPrint(self.buffer.allocator, format, args);
+        defer self.buffer.allocator.free(s);
+        try self.buffer.appendSlice(s);
     }
 
     // it's the programmer's responsibility to pick the param 'size' large enough such that printing the formated string is guaranteed to fit into the buffer (of size 'size')
     fn replaceFormatted(self: *PDFWriter, comptime size: u32, pos: usize, comptime format: []const u8, args: anytype) std.mem.Allocator.Error!void {
-        var string_buffer = [_]u8{0} ** size;
-        var buffered_writer = std.io.FixedBufferStream([]u8){ .pos = 0, .buffer = &string_buffer };
-        buffered_writer.writer().print(format, args) catch unreachable;
-        try self.buffer.replaceRange(pos, buffered_writer.pos, string_buffer[0..buffered_writer.pos]);
+        var string_buffer: [size]u8 = @splat(0);
+        const formatted = std.fmt.bufPrint(&string_buffer, format, args) catch unreachable;
+        try self.buffer.replaceRange(pos, formatted.len, formatted);
     }
 
     fn append(self: *PDFWriter, string: []const u8) std.mem.Allocator.Error!void {

@@ -74,8 +74,8 @@ pub const PDFDocument = struct {
     }
 
     pub fn setupDocument(self: *PDFDocument, format: PageFormat, orientation: PageOrientation) std.mem.Allocator.Error!void {
-        self.page_properties.width = formats[@intFromEnum(format)][0 + @intFromEnum(orientation)];
-        self.page_properties.height = formats[@intFromEnum(format)][1 - @intFromEnum(orientation)];
+        self.page_properties.width = formats[@backingInt(format)][0 + @backingInt(orientation)];
+        self.page_properties.height = formats[@backingInt(format)][1 - @backingInt(orientation)];
         try self.writer.startDocument(self.page_properties.width, self.page_properties.height);
         self.resetCursorPos();
         self.setDefaultStyle();
@@ -227,13 +227,13 @@ pub const PDFDocument = struct {
 
     /// Calling save() "finishes" the document by calling render().
     /// After that, any changes to the pdf document will not generate a valid pdf file.
-    pub fn save(doc: *PDFDocument, filename: []const u8) (std.mem.Allocator.Error || JPEG.JPEGError || std.fs.File.OpenError || error{WriteFailed})!void {
-        const out_file = try std.fs.cwd().createFile(filename, .{});
-        defer out_file.close();
+    pub fn save(doc: *PDFDocument, io: std.Io, filename: []const u8) !void {
+        const out_file = try std.Io.Dir.cwd().createFile(io, filename, .{});
+        defer out_file.close(io);
         var buffer: [1024]u8 = undefined;
-        var buf_writer = out_file.writer(&buffer);
+        var buf_writer = out_file.writer(io, &buffer);
         _ = try buf_writer.interface.write(try doc.render());
-        _ = try buf_writer.interface.flush();
+        try buf_writer.interface.flush();
     }
 
     fn resetCursorPos(self: *PDFDocument) void {
@@ -295,9 +295,9 @@ test "create empty pdf" {
 }
 
 test "check enums" {
-    try std.testing.expectEqual(PageFormat.LETTER, @as(PageFormat, @enumFromInt(0)));
-    try std.testing.expectEqual(PageFormat.A4, @as(PageFormat, @enumFromInt(1)));
+    try std.testing.expectEqual(PageFormat.LETTER, @as(PageFormat, @fromBackingInt(@intCast(0))));
+    try std.testing.expectEqual(PageFormat.A4, @as(PageFormat, @fromBackingInt(@intCast(1))));
 
-    try std.testing.expectEqual(PageOrientation.PORTRAIT, @as(PageOrientation, @enumFromInt(0)));
-    try std.testing.expectEqual(PageOrientation.LANDSCAPE, @as(PageOrientation, @enumFromInt(1)));
+    try std.testing.expectEqual(PageOrientation.PORTRAIT, @as(PageOrientation, @fromBackingInt(@intCast(0))));
+    try std.testing.expectEqual(PageOrientation.LANDSCAPE, @as(PageOrientation, @fromBackingInt(@intCast(1))));
 }
