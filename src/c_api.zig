@@ -5,9 +5,13 @@ const PredefinedFonts = @import("font.zig").PredefinedFonts;
 const Jpeg = @import("./jpeg.zig");
 const arch = @import("builtin").target.cpu.arch;
 
-const api_errors = @cImport({
-    @cInclude("pdf-nano-errors.h");
-});
+const api_errors = struct {
+    const OUT_OF_MEMORY = -1;
+    const NON_UTF8_TEXT = -2;
+    const J_NOT_A_JPEG = -10;
+    const J_TRUNCATED = -11;
+    const J_UNSUPPORTED = -12;
+};
 
 // switch allocator depending on target
 const allocator: std.mem.Allocator = if (arch.isWasm()) std.heap.wasm_allocator else std.heap.page_allocator;
@@ -24,7 +28,7 @@ export fn createEncoder(format: u32, orientation: u32) usize {
 fn createAndInit(format: u32, orientation: u32) std.mem.Allocator.Error!*PDFDocument {
     var writer = try allocator.create(PDFDocument);
     writer.* = PDFDocument.init(allocator);
-    try writer.setupDocument(@enumFromInt(format), @enumFromInt(orientation));
+    try writer.setupDocument(@fromBackingInt(@intCast(format)), @fromBackingInt(@intCast(orientation)));
     return writer;
 }
 
@@ -34,7 +38,7 @@ export fn freeEncoder(doc: *PDFDocument) void {
 }
 
 export fn showPageNumbers(doc: *PDFDocument, alignment: u32, font_size: u8) i32 {
-    if (doc.showPageNumbers(@enumFromInt(alignment), font_size)) {
+    if (doc.showPageNumbers(@fromBackingInt(@intCast(alignment)), font_size)) {
         return 0;
     } else |err| switch (err) {
         error.OutOfMemory => return api_errors.OUT_OF_MEMORY,
@@ -82,7 +86,7 @@ export fn addText(doc: *PDFDocument, text: [*c]const u8) i32 {
 }
 
 export fn addImage(doc: *PDFDocument, raw_jpeg: [*]const u8, len: u32, width: f32, alignment: u32) i32 {
-    if (doc.addImage(raw_jpeg[0..len], width, @enumFromInt(alignment))) {
+    if (doc.addImage(raw_jpeg[0..len], width, @fromBackingInt(@intCast(alignment)))) {
         return 0;
     } else |err| switch (err) {
         Jpeg.JPEGError.NOT_A_JPEG => {
@@ -118,7 +122,7 @@ export fn startTable(doc: *PDFDocument, columns: usize, num_columns: u8) void {
 }
 
 export fn writeRow(doc: *PDFDocument, texts: *[16]usize, num_columns: u8) i32 {
-    var cols: [16][]u8 = [1][]u8{""} ** 16;
+    var cols: [16][]u8 = @splat("");
     var i: u8 = 0;
     while (i < num_columns) : (i += 1) {
         cols[i] = std.mem.span(@as([*c]u8, @ptrFromInt(texts[i])));
@@ -153,7 +157,7 @@ export fn breakPage(doc: *PDFDocument) i32 {
 }
 
 export fn setTableHeaders(doc: *PDFDocument, headers: *[16]usize, num_columns: u8, repeat_header: bool) i32 {
-    var cols: [16][]u8 = [1][]u8{""} ** 16;
+    var cols: [16][]u8 = @splat("");
     var i: u8 = 0;
     while (i < num_columns) : (i += 1) {
         cols[i] = std.mem.span(@as([*c]u8, @ptrFromInt(headers[i])));
@@ -168,7 +172,7 @@ export fn setTableHeaders(doc: *PDFDocument, headers: *[16]usize, num_columns: u
 }
 
 export fn setTextAlignment(doc: *PDFDocument, alignment: u32) void {
-    doc.setTextAlignment(@enumFromInt(alignment));
+    doc.setTextAlignment(@fromBackingInt(@intCast(alignment)));
 }
 
 export fn setFontColor(doc: *PDFDocument, r: f32, g: f32, b: f32) void {
@@ -204,7 +208,9 @@ export fn saveAs(doc: *PDFDocument, filename: [*:0]const u8) i32 {
         return 0;
     }
 
-    if (doc.save(std.mem.span(filename))) {
+    var threaded: std.Io.Threaded = .init(allocator, .{});
+    defer threaded.deinit();
+    if (doc.save(threaded.io(), std.mem.span(filename))) {
         return 0;
     } else |_| {
         return -1;

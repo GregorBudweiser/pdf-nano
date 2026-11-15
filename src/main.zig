@@ -2,7 +2,7 @@ const std = @import("std");
 const pdf = @import("pdf_nano");
 
 const allocator = std.heap.page_allocator;
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     var doc = pdf.PDFDocument.init(allocator);
     defer doc.deinit();
 
@@ -71,11 +71,12 @@ pub fn main() !void {
     try doc.addText("New page!");
     doc.advanceCursor(20);
 
-    if (std.os.argv.len > 1) {
-        const jpeg_content = try std.fs.cwd().readFileAlloc(allocator, std.mem.span(std.os.argv[1]), 1 << 31 - 1);
+    const args = try init.minimal.args.toSlice(init.arena.allocator());
+    if (args.len > 1) {
+        const jpeg_content = try std.Io.Dir.cwd().readFileAlloc(init.io, args[1], allocator, .limited(1 << 31 - 1));
         defer allocator.free(jpeg_content);
         try doc.addImage(jpeg_content, 80.0, pdf.TextAlignment.CENTERED);
     }
 
-    try doc.save("hello_from_zig.pdf");
+    try doc.save(init.io, "hello_from_zig.pdf");
 }
